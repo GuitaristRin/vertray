@@ -47,6 +47,8 @@
 
 ## 当前状态
 
-v0.2：引擎、资产、实例三层分离。资产已迁至私有仓；本仓测试全部基于 `examples/toy-campus` 的合成数据，`pnpm test`（22 项）与 `pnpm typecheck` 通过。
+v1.0：引擎、资产、实例三层分离，宿主已接回。资产在私有仓 `vertray-assets`；本仓测试全部基于 `examples/toy-campus` 的合成数据，`pnpm test`（39 项）与 `pnpm typecheck` 通过。
 
-未迁入：SVG 生成管线（仍在 `portal-web`）、采集器、宿主接回。
+已迁入：底图几何（路网/用地/水系/围墙/建筑/桥）、场地内线、路名与图角、校外背景、Android 采集器（Java 原样）。
+
+待办：采集器 Kotlin 化；`portal-web` 里那份采集器副本待清理。
