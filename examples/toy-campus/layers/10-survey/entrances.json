@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "provenance": {
+    "source": "合成数据",
+    "checkedAt": "2026-10-22",
+    "scope": "示例楼 A、B 各一个已核对入口",
+    "note": "演示用，非真实测量"
+  },
+  "records": {
+    "示例楼 A": [
+      {
+        "side": "south",
+        "is_main": true,
+        "manual": true,
+        "line": [
+          [120.0005, 30.0005],
+          [120.0015, 30.0005]
+        ],
+        "recordedAt": "2026-10-22"
+      }
+    ],
+    "示例楼 B": [
+      {
+        "side": "south",
+        "is_main": false,
+        "manual": true,
+        "line": [
+          [120.002, 30.0005],
+          [120.003, 30.0005]
+        ],
+        "recordedAt": "2026-10-22"
+      }
+    ]
+  }
+}

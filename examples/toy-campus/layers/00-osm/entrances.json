@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "provenance": {
+    "source": "合成数据",
+    "checkedAt": "2026-10-22",
+    "scope": "仅示例楼 A 的北侧一个自动生成入口",
+    "note": "演示用，非真实测量"
+  },
+  "records": {
+    "示例楼 A": [
+      {
+        "side": "north",
+        "is_main": false,
+        "manual": false,
+        "long_edge": false,
+        "dist_to_road": 12,
+        "line": [
+          [120.0005, 30.0015],
+          [120.0015, 30.0015]
+        ]
+      }
+    ]
+  }
+}

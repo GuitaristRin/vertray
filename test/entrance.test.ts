@@ -1,12 +1,12 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { composeDataset, findFeature } from "../src/compose.ts"
+import { composeDataset } from "../src/compose.ts"
 import { entrancePoint, entranceStatus, nearestEntrance } from "../src/entrance.ts"
-import { loadBaseData, loadSurveyData } from "../src/io-node.ts"
+import { loadInstance } from "../src/io-node.ts"
 import type { Entrance, Feature } from "../src/types.ts"
 
-const DATA_DIR = fileURLToPath(new URL("../data", import.meta.url))
+const ROOT = fileURLToPath(new URL("../examples/toy-campus", import.meta.url))
 
 const line: [number, number][] = [
   [116.8, 36.5],
@@ -61,16 +61,17 @@ test("nearestEntrance 放宽到 candidate 后才取近处", () => {
   assert.equal(hit?.feature.properties.name, "近处候选门")
 })
 
-test("真实数据里最近的已核对入口在合理范围内", async () => {
-  const dataset = composeDataset(await loadBaseData(DATA_DIR), await loadSurveyData(DATA_DIR))
-  const campus = findFeature(dataset, "齐鲁工业大学长清校区")
-  assert.ok(campus)
+test("示例实例中，靠近南侧的查询命中已核对入口", async () => {
+  const loaded = await loadInstance(ROOT, "demo")
+  const dataset = composeDataset(
+    loaded.base,
+    loaded.survey,
+    loaded.layers.map((layer) => layer.info),
+  )
 
-  const hit = nearestEntrance(dataset.features, {
-    lat: dataset.meta.center.lat,
-    lng: dataset.meta.center.lng,
-  })
-  assert.ok(hit, "校中心附近应能找到已核对入口")
+  const hit = nearestEntrance(dataset.features, { lat: 30.0006, lng: 120.001 })
+  assert.ok(hit)
+  assert.equal(hit.feature.properties.name, "示例楼 A")
   assert.equal(hit.status, "verified")
-  assert.ok(hit.distanceMeters < 3000, `距离 ${hit.distanceMeters} 超出校区尺度`)
+  assert.ok(hit.distanceMeters < 30, `距离 ${hit.distanceMeters} 应贴近南侧外墙`)
 })

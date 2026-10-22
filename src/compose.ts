@@ -2,24 +2,23 @@
  * 组装：把 base（ODbL）与 survey（本仓条款）合成为可查询的数据集。
  *
  * 合成只发生在内存里，不回写成同一份文件——文件层面的分层是许可边界，
- * 见 data/README.md 与 docs/MAP.md Ⅶ。
+ * 见 docs/MAP.md Ⅶ。
  */
 import type {
   BaseData,
-  CampusMeta,
   Entrance,
   Feature,
   FeatureCollection,
+  LayerInfo,
+  Registration,
   SurveyData,
 } from "./types.ts"
 
 export interface CampusDataset {
-  meta: CampusMeta
+  registration: Registration
   features: Feature[]
-  provenance: {
-    base: { source: string; checkedAt: string }
-    survey: { source: string; checkedAt: string }
-  }
+  /** 参与合成的层，供产物署名与授权核对。 */
+  layers: LayerInfo[]
 }
 
 function mergeEntrances(
@@ -31,7 +30,11 @@ function mergeEntrances(
   return merged.length > 0 ? merged : undefined
 }
 
-export function composeDataset(base: BaseData, survey: SurveyData): CampusDataset {
+export function composeDataset(
+  base: BaseData,
+  survey: SurveyData,
+  layers: LayerInfo[] = [],
+): CampusDataset {
   const features: Feature[] = base.campus.features.map((feature) => {
     const name = feature.properties.name
     const entrances = mergeEntrances(
@@ -59,15 +62,9 @@ export function composeDataset(base: BaseData, survey: SurveyData): CampusDatase
   }
 
   return {
-    meta: base.meta,
+    registration: base.registration,
     features,
-    provenance: {
-      base: { source: base.entrances.provenance.source, checkedAt: base.entrances.provenance.checkedAt },
-      survey: {
-        source: survey.entrances.provenance.source,
-        checkedAt: survey.entrances.provenance.checkedAt,
-      },
-    },
+    layers,
   }
 }
 

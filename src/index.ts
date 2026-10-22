@@ -6,7 +6,7 @@
  */
 export type {
   BaseData,
-  CampusMeta,
+  CanvasInfo,
   Confidence,
   Entrance,
   EntranceStatus,
@@ -15,12 +15,17 @@ export type {
   FeatureKind,
   FeatureProperties,
   Geometry,
+  InstanceConfig,
+  InstanceManifest,
   Issue,
   IssueLevel,
   LatLng,
+  LayerInfo,
+  LayerManifest,
   LngLat,
   Provenance,
   ProvenanceFile,
+  Registration,
   ResidenceStructure,
   SurveyData,
 } from "./types.ts"

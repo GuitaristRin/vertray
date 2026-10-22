@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "provenance": {
+    "source": "合成数据",
+    "checkedAt": "2026-10-22",
+    "scope": "示例楼 B 与 A 共用门厅",
+    "note": "演示用，非真实测量"
+  },
+  "records": {
+    "示例楼 B": {
+      "layout": "connected",
+      "shared_with": "示例楼 A",
+      "entrance_side": "north",
+      "entrance_position": "connector",
+      "source": "合成数据"
+    }
+  }
+}

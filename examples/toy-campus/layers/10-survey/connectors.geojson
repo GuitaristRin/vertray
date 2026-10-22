@@ -1,0 +1,27 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "示例楼 A–B 连接体",
+      "properties": {
+        "name": "示例楼 A–B 连接体",
+        "kind": "building-connector",
+        "serves_buildings": ["示例楼 A", "示例楼 B"],
+        "position_accuracy": "approximate"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [120.0015, 30.0008],
+            [120.002, 30.0008],
+            [120.002, 30.0012],
+            [120.0015, 30.0012],
+            [120.0015, 30.0008]
+          ]
+        ]
+      }
+    }
+  ]
+}

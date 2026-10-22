@@ -33,6 +33,8 @@ export interface Entrance {
    * 它不等于核验时间——人可以今天提交上个月的观察。`checkedAt` 才是作者的声明。
    */
   recordedAt?: string
+  /** 采集者。层内不设默认作者，谁做的写谁。 */
+  contributor?: string
   line: LngLat[]
 }
 
@@ -89,17 +91,74 @@ export interface ProvenanceFile<T> {
   records: Record<string, T>
 }
 
-export interface CampusMeta {
+export interface CanvasInfo {
+  viewBox: string
+  width: number
+  height: number
+  source: string
+}
+
+/** 配准：画布坐标与地理坐标的对应。变更须作为版本事件记录。 */
+export interface Registration {
   schema: number
   campus: string
   center: LatLng
   overlayBounds: { southWest: LatLng; northEast: LatLng }
-  registration: { source: string; note: string }
+  canvas: CanvasInfo
+  note?: string
+}
+
+/**
+ * 层清单：来源、权属、劳动与许可。
+ * 劳动归属（labor）与许可（license）分开记录，互不推导——
+ * 作者补写的中文楼名属其劳动，但位于 ODbL 衍生库中，许可仍是 ODbL。
+ */
+export interface LayerManifest {
+  schema: number
+  id: string
+  title: string
+  order?: number
+  source: { kind: string; dataset?: string; note?: string }
+  holder: string
+  license: { id: string; file?: string; url?: string }
+  constraints?: string[]
+  labor?: {
+    what: string
+    by: string
+    recordedAt?: string
+    note?: string
+  }[]
+  files?: string[]
+}
+
+export interface InstanceConfig {
+  schema: number
+  id: string
+  title: string
+  registration: string
+  layers: string[]
+  style?: string
+  outputs?: string[]
+  note?: string
+}
+
+/** 参与合成的层摘要，随产物一同记录署名与许可。 */
+export interface LayerInfo {
+  id: string
+  title: string
+  holder: string
+  license: string
+}
+
+export interface InstanceManifest {
+  schema: number
+  instances: { id: string; title: string; path: string; layers: string[] }[]
+  layers: { id: string; path: string; holder?: string; license?: string }[]
 }
 
 /** base 层：ODbL 来源。 */
 export interface BaseData {
-  meta: CampusMeta
+  registration: Registration
   campus: FeatureCollection
   entrances: ProvenanceFile<Entrance[]>
 }

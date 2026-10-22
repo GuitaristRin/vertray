@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "campus": "示例校区",
+  "center": { "lat": 30.0015, "lng": 120.002 },
+  "overlayBounds": {
+    "southWest": { "lat": 30, "lng": 120 },
+    "northEast": { "lat": 30.003, "lng": 120.004 }
+  },
+  "canvas": {
+    "viewBox": "0 0 1000 800",
+    "width": 1000,
+    "height": 800,
+    "source": "synthetic"
+  },
+  "note": "合成配准，仅用于测试；不可用于任何真实地点。"
+}

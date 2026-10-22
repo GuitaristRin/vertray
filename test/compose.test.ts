@@ -2,94 +2,56 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { composeDataset, findFeature } from "../src/compose.ts"
-import { loadBaseData, loadSurveyData } from "../src/io-node.ts"
-import type { Entrance, Feature } from "../src/types.ts"
-import { readFile } from "node:fs/promises"
+import { loadInstance } from "../src/io-node.ts"
 
-const DATA_DIR = fileURLToPath(new URL("../data", import.meta.url))
-const FIXTURE = fileURLToPath(new URL("./fixtures/campus-source.json", import.meta.url))
+const ROOT = fileURLToPath(new URL("../examples/toy-campus", import.meta.url))
 
-interface Fixture {
-  center: [number, number]
-  overlayBounds: [[number, number], [number, number]]
-  features: Feature[]
+const load = async () => {
+  const loaded = await loadInstance(ROOT, "demo")
+  return {
+    loaded,
+    dataset: composeDataset(
+      loaded.base,
+      loaded.survey,
+      loaded.layers.map((layer) => layer.info),
+    ),
+  }
 }
 
-const fixture: Fixture = JSON.parse(await readFile(FIXTURE, "utf8"))
-
-const normalizeEntrances = (entrances: Entrance[] | undefined): string[] =>
-  (entrances ?? [])
-    .map((entrance) =>
-      JSON.stringify({
-        side: entrance.side,
-        is_main: entrance.is_main,
-        manual: entrance.manual,
-        ...(entrance.long_edge === undefined ? {} : { long_edge: entrance.long_edge }),
-        ...(entrance.dist_to_road === undefined ? {} : { dist_to_road: entrance.dist_to_road }),
-        ...(entrance.position_accuracy === undefined
-          ? {}
-          : { position_accuracy: entrance.position_accuracy }),
-        line: entrance.line,
-      }),
-    )
-    .sort()
-
-test("拆分后重组与迁移源等价", async () => {
-  const dataset = composeDataset(await loadBaseData(DATA_DIR), await loadSurveyData(DATA_DIR))
-
-  assert.equal(dataset.features.length, fixture.features.length, "特征数量应一致")
-  assert.equal(
-    new Set(dataset.features.map((feature) => feature.properties.name)).size,
-    fixture.features.length,
-    "特征名应唯一",
-  )
-
-  for (const original of fixture.features) {
-    const name = original.properties.name
-    const composed = dataset.features.find((feature) => feature.properties.name === name)
-    assert.ok(composed, `缺少特征：${name}`)
-
-    assert.deepEqual(composed.geometry, original.geometry, `${name} 的几何被改动`)
-
-    const { entrances: originalEntrances, residence: originalResidence, ...originalRest } =
-      original.properties
-    const { entrances: composedEntrances, residence: composedResidence, ...composedRest } =
-      composed.properties
-
-    assert.deepEqual(composedRest, originalRest, `${name} 的基础属性被改动`)
-    assert.deepEqual(
-      normalizeEntrances(composedEntrances),
-      normalizeEntrances(originalEntrances),
-      `${name} 的入口集合被改动`,
-    )
-    assert.deepEqual(composedResidence ?? null, originalResidence ?? null, `${name} 的宿舍结构被改动`)
-  }
+test("合成结果为底图特征加连接体", async () => {
+  const { dataset } = await load()
+  const names = dataset.features.map((feature) => feature.properties.name)
+  assert.deepEqual(names.sort(), ["东门", "示例楼 A", "示例楼 B", "示例操场", "示例楼 A–B 连接体", "示例校区"].sort())
 })
 
-test("base 与 survey 的入口不重叠且各自标记一致", async () => {
-  const base = await loadBaseData(DATA_DIR)
-  const survey = await loadSurveyData(DATA_DIR)
+test("入口按层合并，且保留人工与自动的分界", async () => {
+  const { dataset } = await load()
+  const building = findFeature(dataset, "示例楼 A")
+  assert.ok(building)
+  const entrances = building.properties.entrances ?? []
+  assert.equal(entrances.length, 2, "示例楼 A 应有一个自动入口与一个人工入口")
+  assert.equal(entrances.filter((entrance) => entrance.manual).length, 1)
+  assert.equal(entrances.filter((entrance) => !entrance.manual).length, 1)
+})
 
-  const baseEntrances = Object.values(base.entrances.records).flat()
-  const surveyEntrances = Object.values(survey.entrances.records).flat()
+test("宿舍结构只挂在对应建筑上", async () => {
+  const { dataset } = await load()
+  const buildingB = findFeature(dataset, "示例楼 B")
+  assert.equal(buildingB?.properties.residence?.layout, "connected")
+  assert.equal(buildingB?.properties.residence?.shared_with, "示例楼 A")
+  assert.equal(findFeature(dataset, "示例楼 A")?.properties.residence, undefined)
+})
 
-  assert.ok(baseEntrances.length > 0 && surveyEntrances.length > 0)
-  assert.ok(
-    baseEntrances.every((entrance) => entrance.manual === false),
-    "base 入口不应标记为人工核对",
-  )
-  assert.ok(
-    surveyEntrances.every((entrance) => entrance.manual === true),
-    "survey 入口必须标记为人工核对",
+test("层摘要随数据集返回，供产物署名", async () => {
+  const { dataset } = await load()
+  assert.deepEqual(
+    dataset.layers.map((layer) => `${layer.id}:${layer.license}`),
+    ["osm:ODbL-1.0", "survey:PolyForm-Noncommercial-1.0.0"],
   )
 })
 
-test("数据集可按名称定位并能取到入口", async () => {
-  const dataset = composeDataset(await loadBaseData(DATA_DIR), await loadSurveyData(DATA_DIR))
-  const withEntrance = dataset.features.find(
-    (feature) => (feature.properties.entrances ?? []).length > 0,
-  )
-  assert.ok(withEntrance)
-  const byName = findFeature(dataset, withEntrance.properties.name)
-  assert.equal(byName?.properties.name, withEntrance.properties.name)
+test("配准来自实例而非数据文件", async () => {
+  const { dataset } = await load()
+  assert.equal(dataset.registration.canvas.viewBox, "0 0 1000 800")
+  assert.deepEqual(dataset.registration.center, { lat: 30.0015, lng: 120.002 })
 })

@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "id": "survey",
+  "title": "合成实地层",
+  "order": 10,
+  "source": { "kind": "synthetic", "note": "演示用，非真实数据" },
+  "holder": "Takahashi_Rinta",
+  "license": { "id": "PolyForm-Noncommercial-1.0.0" },
+  "constraints": ["不得与底图层混装"],
+  "labor": [{ "what": "两个已核对入口与一处连接体", "by": "Takahashi_Rinta", "recordedAt": "2026-10-22" }],
+  "files": ["entrances.json", "residence.json", "connectors.geojson"]
+}

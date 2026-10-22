@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "repository": "vertray/examples",
+  "note": "合成数据，仅用于测试与演示；坐标与名称均为虚构，不对应任何真实校园。",
+  "instances": [
+    {
+      "id": "demo",
+      "title": "示例校区",
+      "path": "instances/demo",
+      "layers": ["osm", "survey"]
+    }
+  ],
+  "layers": [
+    {
+      "id": "osm",
+      "path": "layers/00-osm",
+      "holder": "OpenStreetMap contributors",
+      "license": "ODbL-1.0"
+    },
+    {
+      "id": "survey",
+      "path": "layers/10-survey",
+      "holder": "Takahashi_Rinta",
+      "license": "PolyForm-Noncommercial-1.0.0"
+    }
+  ]
+}

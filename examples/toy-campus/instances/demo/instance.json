@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "id": "demo",
+  "title": "示例校区",
+  "registration": "registration.json",
+  "layers": ["osm", "survey"],
+  "style": "default",
+  "outputs": ["model"]
+}

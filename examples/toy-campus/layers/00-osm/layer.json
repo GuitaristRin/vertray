@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "id": "osm",
+  "title": "合成底图",
+  "order": 0,
+  "source": { "kind": "synthetic", "note": "演示用，非真实数据" },
+  "holder": "OpenStreetMap contributors",
+  "license": { "id": "ODbL-1.0" },
+  "constraints": ["衍生数据库须以 ODbL 提供并署名"],
+  "labor": [],
+  "files": ["campus.geojson", "entrances.json"]
+}

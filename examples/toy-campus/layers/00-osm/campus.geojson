@@ -1,0 +1,79 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "示例校区",
+      "properties": { "name": "示例校区", "kind": "campus" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [120, 30],
+            [120.004, 30],
+            [120.004, 30.003],
+            [120, 30.003],
+            [120, 30]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "示例楼 A",
+      "properties": { "name": "示例楼 A", "kind": "building" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [120.0005, 30.0005],
+            [120.0015, 30.0005],
+            [120.0015, 30.0015],
+            [120.0005, 30.0015],
+            [120.0005, 30.0005]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "示例楼 B",
+      "properties": { "name": "示例楼 B", "kind": "building" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [120.002, 30.0005],
+            [120.003, 30.0005],
+            [120.003, 30.0015],
+            [120.002, 30.0015],
+            [120.002, 30.0005]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "东门",
+      "properties": { "name": "东门", "kind": "gate" },
+      "geometry": { "type": "Point", "coordinates": [120.0002, 30.002] }
+    },
+    {
+      "type": "Feature",
+      "id": "示例操场",
+      "properties": { "name": "示例操场", "kind": "pitch", "sport": "track_field" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [120.003, 30.002],
+            [120.0038, 30.002],
+            [120.0038, 30.0028],
+            [120.003, 30.0028],
+            [120.003, 30.002]
+          ]
+        ]
+      }
+    }
+  ]
+}

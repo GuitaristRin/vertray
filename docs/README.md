@@ -12,8 +12,8 @@
 | 接入自己的项目 | [INTEGRATION.md](INTEGRATION.md) · 调用指南 | 接入方式、职责边界、构建阶段、验证清单 |
 | 提交实地发现或修正 | [BACKFLOW.md](BACKFLOW.md) · 回流指南 | 何种所得值得回流、以何证据、范围如何写 |
 | 修改本仓 | [../AGENTS.md](../AGENTS.md) · 工作流守则 | 数据纪律、代码放置、提交约定 |
-| 数据分层与许可 | [../data/README.md](../data/README.md) | 哪份数据属哪套条款，为何不能合并 |
-| 语言与数据布局的依据 | [decisions/](decisions/) · 设计决策 | 为什么是 TypeScript、为什么拆两个目录 |
+| 资产分层与许可 | `vertray-assets` 仓的 `README.md` · 私有 | 哪份数据属哪套条款，为何不能合并 |
+| 语言与结构依据 | [decisions/](decisions/) · 设计决策 | 为什么是 TypeScript、为什么分引擎/资产/实例 |
 
 初次接入，依次读正典与调用指南；遇到实地修正，再按回流指南整理。
 
