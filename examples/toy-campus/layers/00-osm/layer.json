@@ -8,5 +8,5 @@
   "license": { "id": "ODbL-1.0" },
   "constraints": ["衍生数据库须以 ODbL 提供并署名"],
   "contributions": [],
-  "files": ["campus.geojson", "entrances.json"]
+  "files": ["campus.geojson"]
 }

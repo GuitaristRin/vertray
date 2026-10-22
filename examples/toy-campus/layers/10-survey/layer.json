@@ -6,7 +6,9 @@
   "source": { "kind": "synthetic", "note": "演示用，非真实数据" },
   "holder": "Takahashi_Rinta",
   "license": { "id": "PolyForm-Noncommercial-1.0.0" },
-  "constraints": ["不得与底图层混装"],
-  "contributions": [{ "what": "两个已核对入口与一处连接体", "by": "Takahashi_Rinta", "recordedAt": "2026-10-22" }],
-  "files": ["entrances.json", "residence.json", "connectors.geojson"]
+  "constraints": ["共用门厅的楼栋合并为一条结构体"],
+  "contributions": [
+    { "what": "3 条入口与 1 个结构体、1 处连接体", "by": "Takahashi_Rinta", "recordedAt": "2026-10-22" }
+  ],
+  "files": ["entrances.json", "structures.json", "features.geojson"]
 }

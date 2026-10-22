@@ -26,7 +26,7 @@ const warning = (code: string, message: string, at?: string): Issue => ({
 
 /**
  * 检查数据集的结构与分层纪律。
- * 只做能机械判定的事；「这条门是不是真的在这个位置」不在自动校验范围内。
+ * 只做能机械判定的事；「这扇门是不是真的在这个位置」不在自动校验范围内。
  */
 export function validateData(base: BaseData, survey: SurveyData): ValidationResult {
   const issues: Issue[] = []
@@ -44,88 +44,78 @@ export function validateData(base: BaseData, survey: SurveyData): ValidationResu
     names.add(name)
     if (kind === "building-connector") {
       issues.push(
-        error(
-          "connector-in-base",
-          `连接体属于 survey，不应出现在 base：${name}`,
-          name,
-        ),
+        error("connector-in-base", `连接体属自绘层，不应出现在底图：${name}`, name),
       )
     }
   }
 
-  // base 入口：自动生成，manual 必须为 false；否则说明分层被破坏。
-  for (const [name, entrances] of Object.entries(base.entrances.records)) {
-    if (!names.has(name)) {
-      issues.push(error("base-entrance-orphan", `base 入口引用了不存在的特征：${name}`, name))
+  for (const feature of survey.features.features) {
+    const { name, kind } = feature.properties
+    if (!name) {
+      issues.push(error("feature-name-missing", "补绘要素缺少 name"))
+      continue
     }
-    for (const [index, entrance] of entrances.entries()) {
-      const at = `${name}#${index}`
-      if (entrance.manual) {
-        issues.push(
-          error("survey-data-in-base", `base 入口标记为 manual，应移入 survey：${at}`, at),
-        )
-      }
-      if (!entrancePoint(entrance)) {
-        issues.push(error("entrance-line-short", `入口线段不足两点：${at}`, at))
-      }
+    if (names.has(name)) {
+      issues.push(error("feature-name-duplicate", `特征名重复：${name}`, name))
+    }
+    names.add(name)
+    if (kind === "building-connector" && (feature.properties.serves_buildings ?? []).length === 0) {
+      issues.push(
+        warning("connector-serves-missing", `连接体未写明所服务的楼栋：${name}`, name),
+      )
     }
   }
 
-  // survey 入口：必须为人工核对，且必须引用存在的特征。
   for (const [name, entrances] of Object.entries(survey.entrances.records)) {
-    if (!names.has(name) && !survey.connectors.features.some((f) => f.properties.name === name)) {
-      issues.push(error("survey-entrance-orphan", `survey 入口引用了不存在的特征：${name}`, name))
+    if (!names.has(name)) {
+      issues.push(error("entrance-orphan", `入口引用了不存在的特征：${name}`, name))
     }
     for (const [index, entrance] of entrances.entries()) {
       const at = `${name}#${index}`
-      if (!entrance.manual) {
-        issues.push(
-          error("auto-data-in-survey", `survey 入口未标记为 manual：${at}`, at),
-        )
-      }
       if (!entrancePoint(entrance)) {
         issues.push(error("entrance-line-short", `入口线段不足两点：${at}`, at))
+      }
+      if (!entrance.recordedAt) {
+        issues.push(warning("entrance-recorded-missing", `入口缺少 recordedAt：${at}`, at))
       }
       if (entranceStatus(entrance) === "candidate") {
         issues.push(
-          warning("survey-entrance-unverified", `survey 入口可信度为 candidate：${at}`, at),
+          warning("entrance-unverified", `入口可信度为 candidate，不参与导航结论：${at}`, at),
         )
       }
     }
   }
 
-  for (const [name, structure] of Object.entries(survey.residence.records)) {
-    if (!names.has(name)) {
-      issues.push(error("residence-orphan", `宿舍结构引用了不存在的特征：${name}`, name))
+  const claimed = new Map<string, string>()
+  for (const [id, structure] of Object.entries(survey.structures.records)) {
+    const at = id
+    if (structure.members.length === 0) {
+      issues.push(error("structure-empty", `结构体没有成员：${at}`, at))
+    }
+    if (structure.layout === "connected" && structure.members.length < 2) {
+      issues.push(
+        error("structure-single-member", `共用门厅的结构体应至少两栋：${at}`, at),
+      )
+    }
+    if (structure.layout === "standalone" && structure.members.length !== 1) {
+      issues.push(
+        error("structure-multi-member", `独栋结构体只能有一个成员：${at}`, at),
+      )
     }
     if (!structure.source) {
-      issues.push(warning("residence-source-missing", `宿舍结构缺少来源：${name}`, name))
+      issues.push(warning("structure-source-missing", `结构体缺少来源：${at}`, at))
     }
-    if (structure.layout === "connected" && !structure.shared_with) {
-      issues.push(
-        error("residence-shared-missing", `共用门厅未写明共用对象：${name}`, name),
-      )
-    }
-  }
-
-  for (const connector of survey.connectors.features) {
-    if (connector.properties.kind !== "building-connector") {
-      issues.push(
-        error(
-          "connector-kind-wrong",
-          `连接体的 kind 应为 building-connector：${connector.properties.name}`,
-          connector.properties.name,
-        ),
-      )
-    }
-    if ((connector.properties.serves_buildings ?? []).length === 0) {
-      issues.push(
-        warning(
-          "connector-serves-missing",
-          `连接体未写明所服务的楼栋：${connector.properties.name}`,
-          connector.properties.name,
-        ),
-      )
+    for (const member of structure.members) {
+      if (!names.has(member)) {
+        issues.push(error("structure-orphan", `结构体成员不存在：${member}`, member))
+      }
+      const previous = claimed.get(member)
+      if (previous) {
+        issues.push(
+          error("structure-overlap", `楼栋同时属于两个结构体：${member}`, member),
+        )
+      }
+      claimed.set(member, id)
     }
   }
 

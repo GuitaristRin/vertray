@@ -26,7 +26,7 @@ export type {
   Provenance,
   ProvenanceFile,
   Registration,
-  ResidenceStructure,
+  Structure,
   SurveyData,
 } from "./types.ts"
 
@@ -53,6 +53,7 @@ export {
 export {
   composeDataset,
   findFeature,
+  structureMembers,
   toFeatureCollection,
   type CampusDataset,
 } from "./compose.ts"

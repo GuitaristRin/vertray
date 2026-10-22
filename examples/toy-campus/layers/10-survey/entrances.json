@@ -3,11 +3,23 @@
   "provenance": {
     "source": "合成数据",
     "checkedAt": "2026-10-22",
-    "scope": "示例楼 A、B 各一个已核对入口",
+    "scope": "示例楼 A 两个入口、示例楼 B 一个入口",
     "note": "演示用，非真实测量"
   },
   "records": {
     "示例楼 A": [
+      {
+        "side": "north",
+        "is_main": false,
+        "manual": false,
+        "long_edge": false,
+        "dist_to_road": 12,
+        "line": [
+          [120.0005, 30.0015],
+          [120.0015, 30.0015]
+        ],
+        "recordedAt": "2026-10-22"
+      },
       {
         "side": "south",
         "is_main": true,

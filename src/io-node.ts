@@ -19,7 +19,7 @@ import type {
   LayerManifest,
   ProvenanceFile,
   Registration,
-  ResidenceStructure,
+  Structure,
   SurveyData,
 } from "./types.ts"
 
@@ -93,18 +93,15 @@ export async function loadInstance(root: string, instanceId: string): Promise<Lo
     base: {
       registration,
       campus: await readJson<FeatureCollection>(join(osmDir, "campus.geojson")),
-      entrances: await readJson<ProvenanceFile<Entrance[]>>(join(osmDir, "entrances.json")),
     },
     survey: {
       entrances: await readJson<ProvenanceFile<Entrance[]>>(
         join(surveyDir, "entrances.json"),
       ),
-      residence: await readJson<ProvenanceFile<ResidenceStructure>>(
-        join(surveyDir, "residence.json"),
+      structures: await readJson<ProvenanceFile<Structure>>(
+        join(surveyDir, "structures.json"),
       ),
-      connectors: await readJson<FeatureCollection>(
-        join(surveyDir, "connectors.geojson"),
-      ),
+      features: await readJson<FeatureCollection>(join(surveyDir, "features.geojson")),
     },
   }
 }

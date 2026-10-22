@@ -22,27 +22,19 @@ test("示例实例通过校验", async () => {
   assert.equal(result.ok, true)
 })
 
-test("base 中出现人工核对入口即报错", async () => {
-  const { base } = await parts()
-  const next = clone(base)
-  next.entrances.records["示例楼 A"]![0]!.manual = true
-
-  const result = validateData(next, (await parts()).survey)
-  assert.equal(result.ok, false)
-  assert.ok(result.issues.some((issue) => issue.code === "survey-data-in-base"))
-})
-
-test("survey 中出现自动入口即报错", async () => {
+test("入口引用不存在的建筑即报错", async () => {
   const { base, survey } = await parts()
   const next = clone(survey)
-  next.entrances.records["示例楼 A"]![0]!.manual = false
+  next.entrances.records["不存在的楼"] = [
+    { side: "north", is_main: false, manual: true, line: [[120, 30], [120.001, 30]] },
+  ]
 
   const result = validateData(base, next)
   assert.equal(result.ok, false)
-  assert.ok(result.issues.some((issue) => issue.code === "auto-data-in-survey"))
+  assert.ok(result.issues.some((issue) => issue.code === "entrance-orphan"))
 })
 
-test("连接体混进 base 即报错", async () => {
+test("连接体混进底图即报错", async () => {
   const { base, survey } = await parts()
   const next = clone(base)
   next.campus.features.push({
@@ -57,24 +49,47 @@ test("连接体混进 base 即报错", async () => {
   assert.ok(result.issues.some((issue) => issue.code === "connector-in-base"))
 })
 
-test("宿舍共用门厅未写共用对象即报错", async () => {
+test("共用门厅的结构体只有一栋即报错", async () => {
   const { base, survey } = await parts()
   const next = clone(survey)
-  next.residence.records["示例楼 B"] = { layout: "connected", source: "测试" }
+  next.structures.records["示例楼 A、示例楼 B"]!.members = ["示例楼 A"]
 
   const result = validateData(base, next)
   assert.equal(result.ok, false)
-  assert.ok(result.issues.some((issue) => issue.code === "residence-shared-missing"))
+  assert.ok(result.issues.some((issue) => issue.code === "structure-single-member"))
 })
 
-test("入口引用不存在的建筑即报错", async () => {
+test("同一栋楼出现在两个结构体即报错", async () => {
   const { base, survey } = await parts()
   const next = clone(survey)
-  next.entrances.records["不存在的楼"] = [
-    { side: "north", is_main: false, manual: true, line: [[120, 30], [120.001, 30]] },
-  ]
+  next.structures.records["另一个结构"] = {
+    id: "另一个结构",
+    members: ["示例楼 A"],
+    layout: "standalone",
+    source: "测试",
+  }
 
   const result = validateData(base, next)
   assert.equal(result.ok, false)
-  assert.ok(result.issues.some((issue) => issue.code === "survey-entrance-orphan"))
+  assert.ok(result.issues.some((issue) => issue.code === "structure-overlap"))
+})
+
+test("结构体成员不存在即报错", async () => {
+  const { base, survey } = await parts()
+  const next = clone(survey)
+  next.structures.records["示例楼 A、示例楼 B"]!.members = ["示例楼 A", "幽灵楼"]
+
+  const result = validateData(base, next)
+  assert.equal(result.ok, false)
+  assert.ok(result.issues.some((issue) => issue.code === "structure-orphan"))
+})
+
+test("入口缺少 recordedAt 记为警告而非错误", async () => {
+  const { base, survey } = await parts()
+  const next = clone(survey)
+  delete next.entrances.records["示例楼 B"]![0]!.recordedAt
+
+  const result = validateData(base, next)
+  assert.equal(result.ok, true)
+  assert.ok(result.issues.some((issue) => issue.code === "entrance-recorded-missing"))
 })

@@ -38,9 +38,14 @@ export interface Entrance {
   line: LngLat[]
 }
 
-export interface ResidenceStructure {
+/**
+ * 结构体：共用门厅的楼栋属于同一个结构，不按栋重复记录。
+ * `members` 至少一项；`connected` 时至少两项。
+ */
+export interface Structure {
+  id: string
+  members: string[]
   layout: "standalone" | "connected"
-  shared_with?: string
   entrance_side?: "north" | "east" | "west"
   entrance_position?: "center" | "near-main-road" | "connector"
   source: string
@@ -58,7 +63,7 @@ export interface FeatureProperties {
   manual?: boolean
   position_accuracy?: "approximate"
   entrances?: Entrance[]
-  residence?: ResidenceStructure
+  structure?: Structure
 }
 
 export type Geometry =
@@ -156,18 +161,18 @@ export interface InstanceManifest {
   layers: { id: string; path: string; holder?: string; license?: string }[]
 }
 
-/** base 层：ODbL 来源。 */
+/** base 层：ODbL 来源。入口不在此层——门位线没有外部来源。 */
 export interface BaseData {
   registration: Registration
   campus: FeatureCollection
-  entrances: ProvenanceFile<Entrance[]>
 }
 
 /** survey 层：本仓条款。 */
 export interface SurveyData {
   entrances: ProvenanceFile<Entrance[]>
-  residence: ProvenanceFile<ResidenceStructure>
-  connectors: FeatureCollection
+  structures: ProvenanceFile<Structure>
+  /** 作者补绘与示意的要素：OSM 未覆盖的场地、楼栋连接体。 */
+  features: FeatureCollection
 }
 
 export type IssueLevel = "error" | "warning"

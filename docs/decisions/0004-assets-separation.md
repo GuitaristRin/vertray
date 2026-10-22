@@ -39,15 +39,14 @@ vertray/                       引擎（无真实校园数据）
 vertray-assets/                资产（数据）
   manifest.json                实例清单、层列表、署名汇总
   layers/
-    00-osm/                    ODbL：来源几何
-      layer.json               来源、权属、劳动、约束
+    00-osm/                    ODbL：校园轮廓、建筑、校门、老操场
+      layer.json               来源、权属、贡献、约束
       campus.geojson
-      entrances.json
-    10-survey/                 自有：实地采集
+    10-survey/                 自有：门位线、宿舍结构、连接体、补绘场地
       layer.json
       entrances.json
-      residence.json
-      connectors.geojson
+      structures.json          共用门厅的楼栋合为一条
+      features.geojson
     20-institution/            预留：学校/后勤提供，须先有协议
   instances/
     qlu-changqing/
