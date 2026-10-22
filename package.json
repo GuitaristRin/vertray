@@ -1,0 +1,22 @@
+{
+  "name": "vertray",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "可核验的校园矢量地图引擎",
+  "license": "SEE LICENSE IN LICENSE",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}
