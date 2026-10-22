@@ -28,6 +28,11 @@ export interface Entrance {
   long_edge?: boolean
   dist_to_road?: number
   position_accuracy?: "approximate"
+  /**
+   * 记录时间：据 git 历史推出的「该项进入仓库」的日期。
+   * 它不等于核验时间——人可以今天提交上个月的观察。`checkedAt` 才是作者的声明。
+   */
+  recordedAt?: string
   line: LngLat[]
 }
 
