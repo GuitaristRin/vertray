@@ -7,6 +7,7 @@
  * 近似门位用虚线区分——与既有实现一致。
  */
 import type { RenderModel, RenderShape } from "./model.ts"
+import type { BasePath } from "../types.ts"
 import { PALETTE, paintFor } from "./style.ts"
 
 const ESCAPES: Record<string, string> = {
@@ -72,6 +73,27 @@ function shapeToSvg(shape: RenderShape): string {
   return `    <text id="${escapeXml(shape.id)}" text-anchor="middle" font-size="${style.size}" font-weight="${style.weight}" fill="${style.color}" stroke="${PALETTE.label.halo}" stroke-width="3" paint-order="stroke fill" stroke-linejoin="round">${tspans}</text>`
 }
 
+/** 底图原始路径：坐标沿用底图自身的局部米制系，由外层 g 的 transform 变换。 */
+function basePathToSvg(path: BasePath, index: number): string {
+  const fill = path.fill ?? "none"
+  const stroke = path.stroke ? ` stroke="${path.stroke}"` : ""
+  const width = path.strokeWidth !== undefined ? ` stroke-width="${path.strokeWidth}"` : ""
+  return `      <path id="base-${index}" d="${path.d}" fill="${fill}"${stroke}${width} />`
+}
+
+function renderBase(model: RenderModel): string {
+  if (!model.base) return ""
+  const groups = model.base.groups
+    .filter((group) => group.paths.length > 0)
+    .map((group) => {
+      const paths = group.paths.map(basePathToSvg).join("\n")
+      return `    <g id="base-${escapeXml(group.id)}">\n${paths}\n    </g>`
+    })
+    .join("\n")
+
+  return `  <g id="base" transform="${model.base.transform}">\n${groups}\n  </g>`
+}
+
 export function renderSvg(model: RenderModel): string {
   const groups = model.layers
     .filter((layer) => layer.shapes.length > 0)
@@ -97,8 +119,11 @@ export function renderSvg(model: RenderModel): string {
     `  <title id="map-title">${escapeXml(`${model.instance} · 校园地图`)}</title>`,
     `  <desc id="map-desc">${escapeXml(description)}</desc>`,
     `  <rect id="canvas" x="${x}" y="${y}" width="${width}" height="${height}" fill="${PALETTE.canvas}" />`,
+    renderBase(model),
     groups,
     `</svg>`,
     ``,
-  ].join("\n")
+  ]
+    .filter((line) => line !== "")
+    .join("\n")
 }

@@ -6,6 +6,7 @@
  */
 import type {
   BaseData,
+  BaseGeometry,
   Entrance,
   Feature,
   FeatureCollection,
@@ -20,6 +21,8 @@ export interface CampusDataset {
   features: Feature[]
   /** 参与合成的层，供产物署名与授权核对。 */
   layers: LayerInfo[]
+  /** 既有底图的基础几何（路网、用地、水系等），按既有层序。 */
+  geometry?: BaseGeometry
 }
 
 /** 楼栋名 → 所属结构体。共用门厅的楼栋由此指向同一条记录。 */
@@ -65,6 +68,7 @@ export function composeDataset(
     registration: base.registration,
     features,
     layers,
+    ...(base.geometry ? { geometry: base.geometry } : {}),
   }
 }
 

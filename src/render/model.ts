@@ -7,7 +7,7 @@
 import { entrancePoint, entranceStatus } from "../entrance.ts"
 import { haversineMeters } from "../geo.ts"
 import type { CampusDataset } from "../compose.ts"
-import type { Feature, LngLat } from "../types.ts"
+import type { BasePath, Feature, LngLat } from "../types.ts"
 import { createProjector } from "./project.ts"
 import {
   buildingKind,
@@ -64,6 +64,8 @@ export interface RenderModel {
   tier: RenderTier["id"]
   viewport: { x: number; y: number; width: number; height: number }
   viewBox: string
+  /** 既有底图的基础几何，按既有层序先于数据层绘制。 */
+  base?: { transform: string; groups: { id: string; paths: BasePath[] }[] }
   layers: RenderLayer[]
   attribution: string[]
   stats: {
@@ -130,6 +132,8 @@ export function buildRenderModel(
 
   let doorCount = 0
 
+  const hasBase = Boolean(dataset.geometry)
+
   for (const feature of dataset.features) {
     const { name, kind, label_latlng } = feature.properties
     const ring = outerRing(feature)
@@ -138,7 +142,7 @@ export function buildRenderModel(
       label_latlng ? [label_latlng.lng, label_latlng.lat] : centroid(ring),
     )
 
-    if (kind === "campus" && canvasRing.length > 0) {
+    if (kind === "campus" && canvasRing.length > 0 && !hasBase) {
       campus.push({ kind: "polygon", id: name, token: "campus", points: canvasRing })
     }
 
@@ -168,12 +172,15 @@ export function buildRenderModel(
 
     if (kind === "building" && canvasRing.length > 0) {
       const kindOfBuilding = buildingKind(name)
-      buildings.push({
-        kind: "polygon",
-        id: name,
-        token: `building:${kindOfBuilding}`,
-        points: canvasRing,
-      })
+      // 有底图时建筑轮廓由底图绘制（含 80 个无名轮廓），数据层只负责标注。
+      if (!hasBase) {
+        buildings.push({
+          kind: "polygon",
+          id: name,
+          token: `building:${kindOfBuilding}`,
+          points: canvasRing,
+        })
+      }
 
       const omittedInOverview = kindOfBuilding === "residence" || kindOfBuilding === "other"
       if (!(tier.overview && omittedInOverview)) {
@@ -238,6 +245,17 @@ export function buildRenderModel(
     tier: tier.id,
     viewport,
     viewBox: `${viewport.x} ${viewport.y} ${viewport.width} ${viewport.height}`,
+    ...(dataset.geometry
+      ? {
+          base: {
+            transform: dataset.geometry.transform,
+            groups: dataset.geometry.groups.map((group) => ({
+              id: group.id,
+              paths: group.paths,
+            })),
+          },
+        }
+      : {}),
     layers: [
       { id: "campus", shapes: campus },
       { id: "pitches", shapes: pitches },

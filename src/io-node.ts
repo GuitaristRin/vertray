@@ -11,6 +11,7 @@ import { readFile } from "node:fs/promises"
 import { isAbsolute, join, resolve } from "node:path"
 import type {
   BaseData,
+  BaseGeometry,
   Entrance,
   FeatureCollection,
   InstanceConfig,
@@ -25,6 +26,16 @@ import type {
 
 async function readJson<T>(path: string): Promise<T> {
   return JSON.parse(await readFile(path, "utf8")) as T
+}
+
+/** 可选文件：不存在时返回 undefined，用于没有底图的合成示例。 */
+async function readJsonIfExists<T>(path: string): Promise<T | undefined> {
+  try {
+    return await readJson<T>(path)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined
+    throw error
+  }
 }
 
 export interface LoadedLayer {
@@ -85,6 +96,8 @@ export async function loadInstance(root: string, instanceId: string): Promise<Lo
   const osmDir = layerDir("osm")
   const surveyDir = layerDir("survey")
 
+  const geometry = await readJsonIfExists<BaseGeometry>(join(osmDir, "base-geometry.json"))
+
   return {
     root: base,
     instance,
@@ -93,6 +106,7 @@ export async function loadInstance(root: string, instanceId: string): Promise<Lo
     base: {
       registration,
       campus: await readJson<FeatureCollection>(join(osmDir, "campus.geojson")),
+      ...(geometry ? { geometry } : {}),
     },
     survey: {
       entrances: await readJson<ProvenanceFile<Entrance[]>>(

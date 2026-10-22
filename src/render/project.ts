@@ -1,9 +1,9 @@
 /**
  * 配准：地理坐标 → 画布坐标。
  *
- * 用局部等距投影后再等比缩放，而不是把经纬度直接拉伸到 viewBox：
- * 后者在画布长宽比与地理范围不一致时会改变东西与南北的相对尺度，
- * 看起来不歪，量出来是错的。
+ * 优先使用实例登记里的 georef——它与既有底图 source-map.svg 共用同一套
+ * 局部等距投影，这样数据层绘制的建筑、场地、门线与底图几何能严丝合缝。
+ * 没有 georef 时退化为外框等比拟合，仅用于没有底图的合成示例。
  */
 import type { LngLat, Registration } from "../types.ts"
 
@@ -20,6 +20,31 @@ export interface Projector {
 }
 
 export function createProjector(registration: Registration): Projector {
+  const georef = registration.georef
+
+  if (georef) {
+    const toCanvas = ([lng, lat]: LngLat): LngLat => [
+      (lng - georef.originLon0) * georef.metersPerDegree * georef.cosLat0 + georef.xOffsetM,
+      georef.yOffsetM - (lat - georef.originLat0) * georef.metersPerDegree,
+    ]
+
+    const corners = [
+      toCanvas([registration.overlayBounds.southWest.lng, registration.overlayBounds.southWest.lat]),
+      toCanvas([registration.overlayBounds.northEast.lng, registration.overlayBounds.northEast.lat]),
+    ]
+
+    return {
+      scale: 1,
+      viewport: {
+        x: Math.min(corners[0]![0], corners[1]![0]),
+        y: Math.min(corners[0]![1], corners[1]![1]),
+        width: Math.abs(corners[1]![0] - corners[0]![0]),
+        height: Math.abs(corners[1]![1] - corners[0]![1]),
+      },
+      toCanvas,
+    }
+  }
+
   const { width, height } = registration.canvas
   const { southWest, northEast } = registration.overlayBounds
 
@@ -41,7 +66,6 @@ export function createProjector(registration: Registration): Projector {
     viewport: { x: offsetX, y: offsetY, width: drawWidth, height: drawHeight },
     toCanvas: ([lng, lat]) => [
       offsetX + (lng - southWest.lng) * metersPerLng * scale,
-      // 纬度高对应画布上方，所以 y 取反。
       offsetY + (northEast.lat - lat) * metersPerLat * scale,
     ],
   }

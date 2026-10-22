@@ -104,6 +104,17 @@ export interface CanvasInfo {
   source: string
 }
 
+/** 既有底图使用的局部等距投影参数。 */
+export interface Georef {
+  originLat0: number
+  originLon0: number
+  cosLat0: number
+  metersPerDegree: number
+  xOffsetM: number
+  yOffsetM: number
+  note?: string
+}
+
 /** 配准：画布坐标与地理坐标的对应。变更须作为版本事件记录。 */
 export interface Registration {
   schema: number
@@ -111,7 +122,26 @@ export interface Registration {
   center: LatLng
   overlayBounds: { southWest: LatLng; northEast: LatLng }
   canvas: CanvasInfo
+  georef?: Georef
   note?: string
+}
+
+/** 底图上的一条原始路径：坐标沿用底图自身的局部米制坐标系。 */
+export interface BasePath {
+  d: string
+  fill?: string
+  stroke?: string
+  strokeWidth?: number
+  building?: string
+  buildingKind?: string
+}
+
+/** 从既有底图抽出的基础几何，按既有层序分组。 */
+export interface BaseGeometry {
+  schema: number
+  source: string
+  transform: string
+  groups: { id: string; paths: BasePath[] }[]
 }
 
 /**
@@ -168,6 +198,8 @@ export interface InstanceManifest {
 export interface BaseData {
   registration: Registration
   campus: FeatureCollection
+  /** 既有底图的路网、用地、水系、围墙与建筑轮廓。 */
+  geometry?: BaseGeometry
 }
 
 /** survey 层：本仓条款。 */
