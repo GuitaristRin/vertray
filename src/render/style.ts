@@ -127,11 +127,24 @@ export function pitchLabel(overview: boolean): LabelStyle {
   return { color: PALETTE.label.pitch, size: overview ? 23 : 15, weight: 500 }
 }
 
+export function roadLabel(overview: boolean): LabelStyle {
+  return { color: PALETTE.label.road, size: overview ? 18 : 12, weight: 400 }
+}
+
 /** 场地内线：跑道三条内缩椭圆与球场内缩边界。 */
 export const PITCH_MARKINGS = {
   trackMark: { stroke: "#fff8ed", strokeWidth: 0.85 },
   trackInner: { fill: "#b8d4be", stroke: "#fff8ed", strokeWidth: 0.85 },
   fieldInset: { stroke: "#eef7ee", strokeWidth: 0.8 },
+} as const
+
+/** 图角信息（图题、指北针、比例尺、署名）的颜色。 */
+export const MARGINAL = {
+  ink: "#466252",
+  muted: "#829186",
+  rule: "#718277",
+  tick: "#7a897f",
+  credit: "#8e9b91",
 } as const
 
 /** 产物里允许出现的全部颜色。新增颜色必须先进这里，再进样式表。 */
@@ -155,6 +168,8 @@ export function paletteColors(): string[] {
     PALETTE.label.halo,
     PALETTE.label.gate,
     PALETTE.label.pitch,
+    PALETTE.label.road,
+    ...Object.values(MARGINAL),
     ...Object.values(BUILDING_COLORS).flatMap((color) => [color.fill, color.stroke]),
     ...Object.values(PALETTE.label.building),
   ]

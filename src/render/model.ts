@@ -16,6 +16,7 @@ import {
   labelLines,
   PALETTE,
   pitchLabel,
+  roadLabel,
   type LabelStyle,
   type StyleToken,
 } from "./style.ts"
@@ -76,6 +77,8 @@ export interface RenderModel {
   tier: RenderTier["id"]
   viewport: { x: number; y: number; width: number; height: number }
   viewBox: string
+  /** 画布单位与米的换算；比例尺据此绘制。 */
+  unitsPerMeter: number
   /** 既有底图的基础几何，按既有层序先于数据层绘制。 */
   base?: { transform: string; groups: { id: string; paths: BasePath[] }[] }
   layers: RenderLayer[]
@@ -342,6 +345,17 @@ export function buildRenderModel(
     { lat: northEast.lat, lng: northEast.lng },
   )
 
+  // 路名：画布坐标直接来自底图标签，不参与数据层投影。
+  for (const [index, road] of (dataset.geometry?.roadLabels ?? []).entries()) {
+    labels.push({
+      kind: "label",
+      id: `road-${index}`,
+      at: [road.x, road.y],
+      text: road.name,
+      style: roadLabel(tier.overview),
+    })
+  }
+
   const viewport = cropToContent(campus)
 
   return {
@@ -349,6 +363,7 @@ export function buildRenderModel(
     tier: tier.id,
     viewport,
     viewBox: `${viewport.x} ${viewport.y} ${viewport.width} ${viewport.height}`,
+    unitsPerMeter: dataset.registration.georef ? 1 : projector.scale,
     ...(dataset.geometry
       ? {
           base: {

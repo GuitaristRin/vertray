@@ -8,7 +8,7 @@
  */
 import type { RenderModel, RenderShape } from "./model.ts"
 import type { BasePath } from "../types.ts"
-import { PALETTE, paintFor } from "./style.ts"
+import { MARGINAL, PALETTE, paintFor } from "./style.ts"
 
 const ESCAPES: Record<string, string> = {
   "<": "&lt;",
@@ -101,6 +101,31 @@ function renderBase(model: RenderModel): string {
   return `  <g id="base" transform="${model.base.transform}">\n${groups}\n  </g>`
 }
 
+/**
+ * 图角信息：图题、指北针、比例尺、来源署名。
+ * 位置相对视口，不写死画布坐标——裁切后仍然贴边。
+ */
+function renderMarginal(model: RenderModel): string {
+  const { x, y, width, height } = model.viewport
+  const right = x + width
+  const bottom = y + height
+  const bar = 100 * model.unitsPerMeter
+  const compass = right - 55
+
+  return [
+    `  <g id="marginal">`,
+    `    <text x="${x + 38}" y="${y + 53}" font-size="26" font-weight="650" fill="${MARGINAL.ink}">长清校区</text>`,
+    `    <text x="${x + 39}" y="${y + 79}" font-size="13" fill="${MARGINAL.muted}">齐鲁工业大学 · 校园导览</text>`,
+    `    <text x="${compass}" y="${y + 45}" font-size="16" font-weight="650" text-anchor="middle" fill="${MARGINAL.ink}">N</text>`,
+    `    <path d="M${compass} ${y + 85} V${y + 55} M${compass - 6} ${y + 64} L${compass} ${y + 55} L${compass + 6} ${y + 64}" fill="none" stroke="${MARGINAL.ink}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />`,
+    `    <path d="M${x + 38} ${bottom - 37} v6 h${bar.toFixed(2)} v-6 M${x + 38 + bar / 2} ${bottom - 31} v-4" fill="none" stroke="${MARGINAL.rule}" stroke-width="1.3" />`,
+    `    <text x="${x + 38}" y="${bottom - 44}" font-size="11" fill="${MARGINAL.tick}">0</text>`,
+    `    <text x="${x + 38 + bar}" y="${bottom - 44}" font-size="11" text-anchor="end" fill="${MARGINAL.tick}">100 米</text>`,
+    `    <text x="${right - 38}" y="${bottom - 16}" font-size="9" text-anchor="end" fill="${MARGINAL.credit}">© OpenStreetMap contributors · ODbL</text>`,
+    `  </g>`,
+  ].join("\n")
+}
+
 export function renderSvg(model: RenderModel): string {
   const groups = model.layers
     .filter((layer) => layer.shapes.length > 0)
@@ -128,6 +153,7 @@ export function renderSvg(model: RenderModel): string {
     `  <rect id="canvas" x="${x}" y="${y}" width="${width}" height="${height}" fill="${PALETTE.canvas}" />`,
     renderBase(model),
     groups,
+    renderMarginal(model),
     `</svg>`,
     ``,
   ]

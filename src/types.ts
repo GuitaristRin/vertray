@@ -141,6 +141,8 @@ export interface BaseGeometry {
   schema: number
   source: string
   transform: string
+  /** 路名标注：画布坐标，来自源图道路标签。 */
+  roadLabels?: { name: string; x: number; y: number }[]
   groups: { id: string; paths: BasePath[] }[]
 }
 
