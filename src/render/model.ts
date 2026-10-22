@@ -173,9 +173,33 @@ function centroid(points: LngLat[]): LngLat {
   return [sum[0] / body.length, sum[1] / body.length]
 }
 
-/** 视口贴合校园外框加留白，不输出登记画布里的空白带。 */function cropToContent(campus: RenderShape[], margin = 44) {
+/**
+ * 视口策略：
+ * - `content`（默认）：贴合校园外框加留白，适合独立产物。
+ * - `full`：输出完整登记画布，宿主用经纬度框叠加标记时必须用它——
+ *   裁切会改变画布与经纬度的对应，导致覆盖物偏移。
+ */
+export type ViewportMode = "content" | "full"
+
+export function resolveViewport(
+  registration: { canvas: { width: number; height: number } },
+  campus: RenderShape[],
+  mode: ViewportMode,
+) {
+  if (mode === "full") {
+    return { x: 0, y: 0, width: registration.canvas.width, height: registration.canvas.height }
+  }
+  return cropToContent(campus, registration.canvas)
+}
+
+/** 视口贴合校园外框加留白，不输出登记画布里的空白带。 */
+function cropToContent(
+  campus: RenderShape[],
+  canvas: { width: number; height: number },
+  margin = 44,
+) {
   const points = campus.flatMap((shape) => (shape.kind === "polygon" ? shape.points : []))
-  if (points.length === 0) return { x: 0, y: 0, width: 1129.2, height: 1723.7 }
+  if (points.length === 0) return { x: 0, y: 0, width: canvas.width, height: canvas.height }
 
   let minX = Infinity
   let minY = Infinity
@@ -199,6 +223,7 @@ function centroid(points: LngLat[]): LngLat {
 export function buildRenderModel(
   dataset: CampusDataset,
   tier: RenderTier = TIERS.z17,
+  options: { viewport?: ViewportMode } = {},
 ): RenderModel {
   const projector = createProjector(dataset.registration)
   const toCanvas = (point: LngLat): LngLat => projector.toCanvas(point).map(round) as LngLat
@@ -362,7 +387,7 @@ export function buildRenderModel(
     })
   }
 
-  const viewport = cropToContent(campus)
+  const viewport = resolveViewport(dataset.registration, campus, options.viewport ?? "content")
 
   return {
     instance: dataset.registration.campus,

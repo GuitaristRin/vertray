@@ -25,6 +25,7 @@ interface Args {
   instance: string
   out: string
   tiers: RenderTier["id"][]
+  viewport: "content" | "full"
   preview: boolean
 }
 
@@ -50,6 +51,7 @@ function parseArgs(argv: string[]): Args {
     instance: get("instance", "qlu-changqing"),
     out: resolve(get("out", join(ROOT, "dist"))),
     tiers,
+    viewport: get("viewport", "content") === "full" ? "full" : "content",
     preview: argv.includes("--preview"),
   }
 }
@@ -89,7 +91,7 @@ async function main() {
   const rendered: { tier: RenderTier["id"]; svg: string }[] = []
 
   for (const tierId of args.tiers) {
-    const model = buildRenderModel(dataset, TIERS[tierId])
+    const model = buildRenderModel(dataset, TIERS[tierId], { viewport: args.viewport })
     const svg = renderSvg(model)
 
     await writeFile(join(outDir, `model-${tierId}.json`), `${JSON.stringify(model, null, 2)}\n`, "utf8")
