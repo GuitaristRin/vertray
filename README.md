@@ -78,12 +78,13 @@ pnpm build:instance
 
 ## 当前状态
 
-**v0.3 — 渲染链路可跑通。**
+**v0.4 — 视觉按 Kanesumi Design 重做。**
 
 - 引擎：`src/` 提供实例加载、数据合成、入口可信度、最近可达入口、平面几何、分层校验、渲染模型与 SVG 后端。
 - 构建：`tools/build/cli.ts` 读资产出实例，三档 SVG + 模型 + 哈希清单，一次约 40 ms。
 - 资产：私有仓，按 `00-osm` / `10-survey` 分层，逐层声明来源、权属、贡献与许可。
-- 测试：31 项，全部基于合成示例，引擎仓不含真实校园数据。
+- 样式：中性五阶 + 单一强调色 + 直角；规则见 [docs/MAP_STYLE.md](docs/MAP_STYLE.md)。
+- 测试：34 项，含「不得出现圆点与圆角」「除 accent 外只允许灰阶」两条样式断言。
 
 尚未迁入：采集器、宿主接回。SVG 与 `portal-web` 现有产物尚未逐张比对。
 
@@ -92,6 +93,7 @@ pnpm build:instance
 | 所求 | 文档 | 读后应知 |
 |---|---|---|
 | 理解 vertray 何为地图 | [docs/MAP.md](docs/MAP.md) · 正典 | 三层结构、不变量、入口模型与失败模式 |
+| 图的视觉规则 | [docs/MAP_STYLE.md](docs/MAP_STYLE.md) · 样式正典 | 中性分层、单一强调色、直角、取景 |
 | 接入自己的项目 | [docs/INTEGRATION.md](docs/INTEGRATION.md) · 调用指南 | 接入方式、宿主职责、构建与验证 |
 | 提交实地发现或修正 | [docs/BACKFLOW.md](docs/BACKFLOW.md) · 回流指南 | 何种所得值得回流、以何证据、走何路径 |
 | 修改本仓 | [AGENTS.md](AGENTS.md) · 工作流守则 | 本仓的数据纪律、代码放置与提交约定 |

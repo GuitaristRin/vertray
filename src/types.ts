@@ -144,6 +144,8 @@ export interface InstanceConfig {
   registration: string
   layers: string[]
   style?: string
+  /** 单一强调色。换它即换掉产物里全部强调表现。 */
+  accent?: string
   outputs?: string[]
   note?: string
 }

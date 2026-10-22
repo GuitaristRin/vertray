@@ -3,21 +3,24 @@
  *
  * 只描述「画什么、按什么语义着色」，不出现 SVG 专有概念。
  * SVG、Compose Canvas 等后端各自把它翻成自己的绘制指令。
+ *
+ * 样式约束见 docs/MAP_STYLE.md：中性分层、单一强调色、直角、无渐变无阴影。
  */
 import { entrancePoint, entranceStatus } from "../entrance.ts"
 import { haversineMeters } from "../geo.ts"
 import type { CampusDataset } from "../compose.ts"
 import type { Feature, LngLat } from "../types.ts"
 import { createProjector } from "./project.ts"
-import type { StyleToken } from "./style.ts"
+import { DEFAULT_ACCENT, markerSize, type StyleToken } from "./style.ts"
 
 export interface RenderShape {
-  kind: "polygon" | "point" | "label"
+  kind: "polygon" | "marker" | "label"
   id: string
   style: StyleToken
-  /** 多边形顶点；point/label 只用第一项。 */
+  /** 多边形顶点；marker/label 只用第一项。 */
   points: LngLat[]
-  radius?: number
+  /** 方块标记的边长（画布单位）。 */
+  size?: number
   text?: string
   anchor?: "middle" | "start" | "end"
 }
@@ -41,14 +44,14 @@ export const TIERS: Record<RenderTier["id"], RenderTier> = {
   overview: {
     id: "overview",
     title: "总览",
-    labelMinArea: 6000,
+    labelMinArea: 7000,
     entrances: "none",
     showConnectors: false,
   },
   z17: {
     id: "z17",
     title: "标准",
-    labelMinArea: 1500,
+    labelMinArea: 1800,
     entrances: "verified",
     showConnectors: true,
   },
@@ -61,11 +64,16 @@ export const TIERS: Record<RenderTier["id"], RenderTier> = {
   },
 }
 
+export interface RenderOptions {
+  /** 单一强调色。换它即换掉全部强调表现。 */
+  accent?: string
+}
+
 export interface RenderModel {
   instance: string
   tier: RenderTier["id"]
-  width: number
-  height: number
+  accent: string
+  viewport: { x: number; y: number; width: number; height: number }
   viewBox: string
   layers: RenderLayer[]
   attribution: string[]
@@ -104,22 +112,60 @@ function polygonArea(points: LngLat[]): number {
   return Math.abs(total) / 2
 }
 
+/**
+ * 视口贴合内容（贴边）：以校园多边形为界，外扩固定留白。
+ * 配准不动，只改取景——所有几何仍在同一套画布坐标里。
+ */
+function cropToContent(land: RenderShape[], margin = 44) {
+  const points = land.flatMap((shape) => shape.points)
+  if (points.length === 0) return { x: 0, y: 0, width: 1129.2, height: 1723.7 }
+
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const [x, y] of points) {
+    if (x < minX) minX = x
+    if (x > maxX) maxX = x
+    if (y < minY) minY = y
+    if (y > maxY) maxY = y
+  }
+
+  return {
+    x: Math.round((minX - margin) * 100) / 100,
+    y: Math.round((minY - margin) * 100) / 100,
+    width: Math.round((maxX - minX + margin * 2) * 100) / 100,
+    height: Math.round((maxY - minY + margin * 2) * 100) / 100,
+  }
+}
+
 export function buildRenderModel(
   dataset: CampusDataset,
   tier: RenderTier = TIERS.z17,
+  options: RenderOptions = {},
 ): RenderModel {
+  const accent = options.accent ?? DEFAULT_ACCENT
   const projector = createProjector(dataset.registration)
   const toCanvas = (point: LngLat): LngLat => projector.toCanvas(point).map(round) as LngLat
 
-  const campus: RenderShape[] = []
-  const pitches: RenderShape[] = []
+  const land: RenderShape[] = []
+  const open: RenderShape[] = []
   const buildings: RenderShape[] = []
-  const connectors: RenderShape[] = []
+  const links: RenderShape[] = []
   const gates: RenderShape[] = []
   const entrances: RenderShape[] = []
   const labels: RenderShape[] = []
 
   let entranceCount = 0
+
+  const pushMarker = (
+    target: RenderShape[],
+    id: string,
+    style: StyleToken,
+    at: LngLat,
+  ) => {
+    target.push({ kind: "marker", id, style, points: [at], size: markerSize(style) })
+  }
 
   for (const feature of dataset.features) {
     const { name, kind, label_latlng } = feature.properties
@@ -130,9 +176,9 @@ export function buildRenderModel(
     )
 
     if (kind === "campus" || kind === "pitch" || kind === "building") {
-      const target = kind === "campus" ? campus : kind === "pitch" ? pitches : buildings
+      const target = kind === "campus" ? land : kind === "pitch" ? open : buildings
       if (canvasRing.length > 0) {
-        target.push({ kind: "polygon", id: name, style: kind, points: canvasRing })
+        target.push({ kind: "polygon", id: name, style: kind === "campus" ? "land" : kind === "pitch" ? "open" : "building", points: canvasRing })
       }
       const area = polygonArea(canvasRing)
       const alwaysLabelled = kind === "campus"
@@ -150,19 +196,14 @@ export function buildRenderModel(
 
     if (kind === "building-connector" && tier.showConnectors) {
       if (canvasRing.length > 0) {
-        connectors.push({
-          kind: "polygon",
-          id: name,
-          style: "building-connector",
-          points: canvasRing,
-        })
+        links.push({ kind: "polygon", id: name, style: "link", points: canvasRing })
       }
     }
 
     if (kind === "gate") {
       const at =
         feature.geometry.type === "Point" ? toCanvas(feature.geometry.coordinates) : labelAt
-      gates.push({ kind: "point", id: name, style: "gate", points: [at], radius: 6 })
+      pushMarker(gates, name, "gate", at)
       labels.push({
         kind: "label",
         id: `${name}-label`,
@@ -180,18 +221,16 @@ export function buildRenderModel(
       if (tier.entrances === "verified" && status !== "verified") continue
       const point = entrancePoint(entrance)
       if (!point) continue
-      entrances.push({
-        kind: "point",
-        id: `${name}-${status}`,
-        style:
-          status === "verified"
-            ? "entrance-verified"
-            : status === "approximate"
-              ? "entrance-approximate"
-              : "entrance-candidate",
-        points: [toCanvas(point)],
-        radius: status === "verified" ? 3.2 : 2.4,
-      })
+      pushMarker(
+        entrances,
+        `${name}-${status}-${entranceCount}`,
+        status === "verified"
+          ? "entrance-verified"
+          : status === "approximate"
+            ? "entrance-approximate"
+            : "entrance-candidate",
+        toCanvas(point),
+      )
       entranceCount += 1
     }
   }
@@ -202,17 +241,19 @@ export function buildRenderModel(
     { lat: northEast.lat, lng: northEast.lng },
   )
 
+  const viewport = cropToContent(land)
+
   return {
     instance: dataset.registration.campus,
     tier: tier.id,
-    width: dataset.registration.canvas.width,
-    height: dataset.registration.canvas.height,
-    viewBox: dataset.registration.canvas.viewBox,
+    accent,
+    viewport,
+    viewBox: `${viewport.x} ${viewport.y} ${viewport.width} ${viewport.height}`,
     layers: [
-      { id: "campus", shapes: campus },
-      { id: "pitches", shapes: pitches },
+      { id: "land", shapes: land },
+      { id: "open", shapes: open },
       { id: "buildings", shapes: buildings },
-      { id: "connectors", shapes: connectors },
+      { id: "links", shapes: links },
       { id: "gates", shapes: gates },
       { id: "entrances", shapes: entrances },
       { id: "labels", shapes: labels },

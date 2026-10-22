@@ -89,7 +89,7 @@ async function main() {
   const rendered: { tier: RenderTier["id"]; svg: string }[] = []
 
   for (const tierId of args.tiers) {
-    const model = buildRenderModel(dataset, TIERS[tierId])
+    const model = buildRenderModel(dataset, TIERS[tierId], { accent: loaded.instance.accent })
     const svg = renderSvg(model)
 
     await writeFile(join(outDir, `model-${tierId}.json`), `${JSON.stringify(model, null, 2)}\n`, "utf8")
