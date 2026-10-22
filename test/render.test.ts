@@ -6,7 +6,7 @@ import { loadInstance } from "../src/io-node.ts"
 import { buildRenderModel, TIERS, type RenderShape } from "../src/render/model.ts"
 import { createProjector } from "../src/render/project.ts"
 import { renderSvg } from "../src/render/svg.ts"
-import { BUILDING_COLORS, PALETTE } from "../src/render/style.ts"
+import { paletteColors } from "../src/render/style.ts"
 import { validateData } from "../src/validate.ts"
 
 const ROOT = fileURLToPath(new URL("../examples/toy-campus", import.meta.url))
@@ -27,6 +27,7 @@ const dataset = async () => {
 function pointsOf(shape: RenderShape): [number, number][] {
   if (shape.kind === "polygon" || shape.kind === "line") return shape.points
   if (shape.kind === "circle") return [shape.at]
+  if (shape.kind === "rect") return [shape.center]
   return [shape.at]
 }
 
@@ -110,25 +111,7 @@ test("只用调色板内的颜色，且没有渐变、滤镜与阴影", async ()
   const { dataset: data } = await dataset()
   const svg = renderSvg(buildRenderModel(data, TIERS.close))
 
-  const allowed = new Set<string>([
-    PALETTE.canvas,
-    PALETTE.campus.fill,
-    PALETTE.campus.stroke,
-    PALETTE.pitch.track.fill,
-    PALETTE.pitch.track.stroke,
-    PALETTE.pitch.field.fill,
-    PALETTE.pitch.field.stroke,
-    PALETTE.gate.fill,
-    PALETTE.gate.stroke,
-    PALETTE.door.casing,
-    PALETTE.door.stroke,
-    PALETTE.label.base,
-    PALETTE.label.halo,
-    PALETTE.label.gate,
-    PALETTE.label.pitch,
-    ...Object.values(BUILDING_COLORS).flatMap((color) => [color.fill, color.stroke]),
-    ...Object.values(PALETTE.label.building),
-  ])
+  const allowed = new Set(paletteColors())
 
   for (const match of svg.matchAll(/(?:fill|stroke)="(#[0-9A-Fa-f]{6})"/g)) {
     assert.ok(allowed.has(match[1]!), `出现调色板外的颜色：${match[1]}`)

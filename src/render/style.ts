@@ -15,6 +15,9 @@ export type StyleToken =
   | `building:${BuildingKind}`
   | "pitch:track"
   | "pitch:field"
+  | "track-mark"
+  | "track-inner"
+  | "field-inset"
   | "gate"
   | "door"
   | "door-approximate"
@@ -124,10 +127,47 @@ export function pitchLabel(overview: boolean): LabelStyle {
   return { color: PALETTE.label.pitch, size: overview ? 23 : 15, weight: 500 }
 }
 
+/** 场地内线：跑道三条内缩椭圆与球场内缩边界。 */
+export const PITCH_MARKINGS = {
+  trackMark: { stroke: "#fff8ed", strokeWidth: 0.85 },
+  trackInner: { fill: "#b8d4be", stroke: "#fff8ed", strokeWidth: 0.85 },
+  fieldInset: { stroke: "#eef7ee", strokeWidth: 0.8 },
+} as const
+
+/** 产物里允许出现的全部颜色。新增颜色必须先进这里，再进样式表。 */
+export function paletteColors(): string[] {
+  return [
+    PALETTE.canvas,
+    PALETTE.campus.fill,
+    PALETTE.campus.stroke,
+    PALETTE.pitch.track.fill,
+    PALETTE.pitch.track.stroke,
+    PALETTE.pitch.field.fill,
+    PALETTE.pitch.field.stroke,
+    PITCH_MARKINGS.trackMark.stroke,
+    PITCH_MARKINGS.trackInner.fill,
+    PITCH_MARKINGS.fieldInset.stroke,
+    PALETTE.gate.fill,
+    PALETTE.gate.stroke,
+    PALETTE.door.casing,
+    PALETTE.door.stroke,
+    PALETTE.label.base,
+    PALETTE.label.halo,
+    PALETTE.label.gate,
+    PALETTE.label.pitch,
+    ...Object.values(BUILDING_COLORS).flatMap((color) => [color.fill, color.stroke]),
+    ...Object.values(PALETTE.label.building),
+  ]
+}
+
 export function paintFor(token: StyleToken): Paint {
   if (token === "campus") return PALETTE.campus
   if (token === "pitch:track") return PALETTE.pitch.track
   if (token === "pitch:field") return PALETTE.pitch.field
+  // 场地内线：跑道三条内缩椭圆与球场内缩边界，取值同既有实现。
+  if (token === "track-mark") return { fill: "none", stroke: "#fff8ed", strokeWidth: 0.85 }
+  if (token === "track-inner") return { fill: "#b8d4be", stroke: "#fff8ed", strokeWidth: 0.85 }
+  if (token === "field-inset") return { fill: "none", stroke: "#eef7ee", strokeWidth: 0.8 }
   if (token === "gate") return { fill: PALETTE.gate.fill, stroke: PALETTE.gate.stroke, strokeWidth: 2 }
   if (token === "door") return { fill: "none", stroke: PALETTE.door.stroke, strokeWidth: PALETTE.door.strokeWidth }
   if (token === "door-approximate") return { fill: "none", stroke: PALETTE.door.stroke, strokeWidth: PALETTE.door.strokeWidth }

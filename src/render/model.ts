@@ -32,6 +32,18 @@ export type RenderShape =
       casing?: string
       casingWidth?: number
     }
+  | {
+      kind: "rect"
+      id: string
+      token: StyleToken
+      /** 矩形中心；旋转绕此点。 */
+      center: LngLat
+      width: number
+      height: number
+      rx: number
+      /** 顺时针角度（度）。 */
+      rotation: number
+    }
   | { kind: "label"; id: string; at: LngLat; text: string; style: LabelStyle }
 
 export interface RenderLayer {
@@ -78,6 +90,67 @@ export interface RenderModel {
 
 const round = (value: number) => Math.round(value * 100) / 100
 
+/** 去掉与首点重合的闭合点。 */
+function openRing(points: LngLat[]): LngLat[] {
+  if (points.length > 1) {
+    const [first] = points
+    const last = points[points.length - 1]!
+    if (first && first[0] === last[0] && first[1] === last[1]) return points.slice(0, -1)
+  }
+  return points
+}
+
+function meanPoint(points: LngLat[]): LngLat {
+  const sum = points.reduce<LngLat>((acc, point) => [acc[0] + point[0], acc[1] + point[1]], [0, 0])
+  return [sum[0] / points.length, sum[1] / points.length]
+}
+
+/**
+ * 田径场的示意内线：以最长边为长轴，取旋转后的外接矩形。
+ * 这些内缩椭圆只是识别符号，不代表实测跑道位置——与既有实现一致。
+ */
+function athleticFrame(points: LngLat[]): {
+  center: LngLat
+  rotation: number
+  length: number
+  breadth: number
+} | null {
+  const ring = openRing(points)
+  if (ring.length < 3) return null
+
+  let longest = 0
+  let angle = 0
+  for (let i = 0; i < ring.length; i += 1) {
+    const a = ring[i]!
+    const b = ring[(i + 1) % ring.length]!
+    const distance = Math.hypot(b[0] - a[0], b[1] - a[1])
+    if (distance > longest) {
+      longest = distance
+      angle = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI
+    }
+  }
+  if (longest === 0) return null
+
+  const center = meanPoint(ring)
+  const radians = (-angle * Math.PI) / 180
+  const cos = Math.cos(radians)
+  const sin = Math.sin(radians)
+  const rotated = ring.map(([x, y]) => {
+    const dx = x - center[0]
+    const dy = y - center[1]
+    return [dx * cos - dy * sin, dx * sin + dy * cos] as LngLat
+  })
+
+  const xs = rotated.map(([x]) => x)
+  const ys = rotated.map(([, y]) => y)
+  return {
+    center,
+    rotation: angle,
+    length: Math.max(...xs) - Math.min(...xs),
+    breadth: Math.max(...ys) - Math.min(...ys),
+  }
+}
+
 function outerRing(feature: Feature): LngLat[] {
   if (feature.geometry.type !== "Polygon") return []
   return feature.geometry.coordinates[0] ?? []
@@ -91,8 +164,7 @@ function centroid(points: LngLat[]): LngLat {
   return [sum[0] / body.length, sum[1] / body.length]
 }
 
-/** 视口贴合校园外框加留白，不输出登记画布里的空白带。 */
-function cropToContent(campus: RenderShape[], margin = 44) {
+/** 视口贴合校园外框加留白，不输出登记画布里的空白带。 */function cropToContent(campus: RenderShape[], margin = 44) {
   const points = campus.flatMap((shape) => (shape.kind === "polygon" ? shape.points : []))
   if (points.length === 0) return { x: 0, y: 0, width: 1129.2, height: 1723.7 }
 
@@ -154,6 +226,38 @@ export function buildRenderModel(
         token: athletic ? "pitch:track" : "pitch:field",
         points: canvasRing,
       })
+
+      if (athletic) {
+        const frame = athleticFrame(canvasRing)
+        if (frame) {
+          for (const inset of [8, 12, 16]) {
+            pitches.push({
+              kind: "rect",
+              id: `${name}-mark-${inset}`,
+              token: inset === 16 ? "track-inner" : "track-mark",
+              center: frame.center.map(round) as LngLat,
+              width: round(frame.length - inset * 2),
+              height: round(frame.breadth - inset * 2),
+              rx: round(Math.max(0, frame.breadth / 2 - inset)),
+              rotation: round(frame.rotation),
+            })
+          }
+        }
+      } else {
+        const ring = openRing(canvasRing)
+        if (ring.length > 2) {
+          const center = meanPoint(ring)
+          pitches.push({
+            kind: "polygon",
+            id: `${name}-inset`,
+            token: "field-inset",
+            points: ring.map(
+              ([x, y]) =>
+                [round(center[0] + (x - center[0]) * 0.91), round(center[1] + (y - center[1]) * 0.91)] as LngLat,
+            ),
+          })
+        }
+      }
       if (!tier.overview || name.includes("田径")) {
         const lines = tier.overview
           ? [name.split("-")[0] ?? name]

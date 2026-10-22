@@ -59,6 +59,13 @@ function shapeToSvg(shape: RenderShape): string {
     return `${casing}    <path id="${escapeXml(shape.id)}" d="${d}" ${paintAttrs(paint)} stroke-linecap="round"${dash} />`
   }
 
+  if (shape.kind === "rect") {
+    const paint = paintFor(shape.token)
+    const { center, width, height, rx, rotation } = shape
+    const transform = `translate(${center[0]} ${center[1]}) rotate(${rotation})`
+    return `    <rect id="${escapeXml(shape.id)}" x="${-width / 2}" y="${-height / 2}" width="${width}" height="${height}" rx="${rx}" transform="${transform}" ${paintAttrs(paint)} />`
+  }
+
   const { style } = shape
   const lines = shape.text.split("\n")
   const lineHeight = style.size * 1.15
