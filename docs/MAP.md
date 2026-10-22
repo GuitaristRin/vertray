@@ -74,7 +74,7 @@
 - `00-osm`：派生自 OpenStreetMap，依 ODbL 提供并署名。**不可另行限制，也不可主张保留所有权利。**
 - `10-survey`：实地所得，依本仓条款提供。
 
-劳动归属与许可是两件事：作者补写的中文楼名属其劳动，但因位于 ODbL 衍生库中，许可仍是 ODbL。各层 `layer.json` 分别记录 `labor` 与 `license`，互不推导。
+贡献归属与许可是两件事：作者补写的中文楼名属其贡献，但因位于 ODbL 衍生库中，许可仍是 ODbL。各层 `layer.json` 分别记录 `contributions` 与 `license`，互不推导。
 
 生成器可以读取多层，但不得把 `00-osm` 的几何抄写进 `10-survey` 的文件以绕开 ODbL。产物（SVG、渲染模型）属于 Produced Work，随其来源保留署名。
 

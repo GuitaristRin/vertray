@@ -69,7 +69,7 @@ vertray-assets/                资产（数据）
   "holder": "Takahashi_Rinta",
   "license": { "id": "PolyForm-Noncommercial-1.0.0", "file": "../../LICENSE" },
   "constraints": [],
-  "labor": [
+  "contributions": [
     { "what": "门位与门向", "by": "Takahashi_Rinta", "recordedAt": "2026-10-20/2026-10-22" }
   ]
 }
@@ -83,7 +83,7 @@ OSM 层的关键差别：
   "license": { "id": "ODbL-1.0", "url": "https://opendatacommons.org/licenses/odbl/1-0/" },
   "holder": "OpenStreetMap contributors",
   "constraints": ["衍生数据库须以 ODbL 提供", "产物须署名 OpenStreetMap contributors"],
-  "labor": [
+  "contributions": [
     { "what": "中文楼名与别名", "by": "Takahashi_Rinta", "note": "位于 ODbL 衍生库中，许可仍为 ODbL" }
   ]
 }
@@ -91,8 +91,8 @@ OSM 层的关键差别：
 
 **核心规则：劳动归属与许可是两件事，分别记录，不得互相推导。**
 
-- 中文楼名是你做的劳动，但它长在 ODbL 衍生库里，许可仍是 ODbL——`labor` 记你的功劳，`license` 记能不能限制。
-- 反过来，`labor` 里写了你的名字，不代表该层可以主张保留所有权利。
+- 中文楼名是你做的劳动，但它长在 ODbL 衍生库里，许可仍是 ODbL——`contributions` 记你的功劳，`license` 记能不能限制。
+- 反过来，`contributions` 里写了你的名字，不代表该层可以主张保留所有权利。
 - 将来的合作者、学校提供的数据，各占一层，各自声明；不往 `10-survey` 里混。
 
 记录级可选字段：`recordedAt`（已有）、`contributor`（预留）。层内不设「默认作者」，谁做的写谁。

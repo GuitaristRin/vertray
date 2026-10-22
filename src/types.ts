@@ -109,9 +109,9 @@ export interface Registration {
 }
 
 /**
- * 层清单：来源、权属、劳动与许可。
- * 劳动归属（labor）与许可（license）分开记录，互不推导——
- * 作者补写的中文楼名属其劳动，但位于 ODbL 衍生库中，许可仍是 ODbL。
+ * 层清单：来源、权属、贡献与许可。
+ * 贡献归属（contributions）与许可（license）分开记录，互不推导——
+ * 作者补写的中文楼名属其贡献，但位于 ODbL 衍生库中，许可仍是 ODbL。
  */
 export interface LayerManifest {
   schema: number
@@ -122,7 +122,7 @@ export interface LayerManifest {
   holder: string
   license: { id: string; file?: string; url?: string }
   constraints?: string[]
-  labor?: {
+  contributions?: {
     what: string
     by: string
     recordedAt?: string
