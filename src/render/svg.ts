@@ -1,14 +1,13 @@
 /**
  * SVG 后端：把渲染模型写成独立的 SVG 文档。
  *
- * 这是一个后端，不是核心。换后端（Compose Canvas、Canvas2D）只替换本文件，
- * 模型与数据不动。
+ * 这是一个后端，不是核心。换后端（Compose Canvas、Canvas2D）只替换本文件。
  *
- * Kanesumi 约束在写出层同样生效：直角（无圆角、miter 连接）、纯色、
- * 无渐变、无滤镜、无阴影；标注光晕用描边实现，不是投影。
+ * 视觉约束：纯色、无渐变、无滤镜、无阴影；门线用双描边加圆头端帽，
+ * 近似门位用虚线区分——与既有实现一致。
  */
 import type { RenderModel, RenderShape } from "./model.ts"
-import { styleFor, type Style } from "./style.ts"
+import { PALETTE, paintFor } from "./style.ts"
 
 const ESCAPES: Record<string, string> = {
   "<": "&lt;",
@@ -20,84 +19,84 @@ const ESCAPES: Record<string, string> = {
 
 const escapeXml = (text: string) => text.replace(/[<>&"']/g, (char) => ESCAPES[char] ?? char)
 
-const SHAPE_GEOMETRY = 'stroke-linejoin="miter" stroke-miterlimit="4" stroke-linecap="butt"'
-
-function attrs(style: Style): string {
+const paintAttrs = (paint: { fill?: string; stroke?: string; strokeWidth?: number; opacity?: number }) => {
   const parts: string[] = []
-  if (style.fill) parts.push(`fill="${style.fill}"`)
-  if (style.stroke) parts.push(`stroke="${style.stroke}"`)
-  if (style.strokeWidth !== undefined) parts.push(`stroke-width="${style.strokeWidth}"`)
-  if (style.opacity !== undefined) parts.push(`opacity="${style.opacity}"`)
+  if (paint.fill !== undefined) parts.push(`fill="${paint.fill}"`)
+  if (paint.stroke) parts.push(`stroke="${paint.stroke}"`)
+  if (paint.strokeWidth !== undefined) parts.push(`stroke-width="${paint.strokeWidth}"`)
+  if (paint.opacity !== undefined) parts.push(`opacity="${paint.opacity}"`)
   return parts.join(" ")
 }
 
-function pathData(points: RenderShape["points"]): string {
+function polyline(points: readonly [number, number][], close: boolean): string {
   if (points.length === 0) return ""
   const [first, ...rest] = points
   const start = `M ${first![0]} ${first![1]}`
-  const lines = rest.map((point) => `L ${point[0]} ${point[1]}`).join(" ")
-  return `${start} ${lines} Z`.replace(/\s+/g, " ")
+  const body = rest.map((point) => `L ${point[0]} ${point[1]}`).join(" ")
+  return close ? `${start} ${body} Z`.replace(/\s+/g, " ") : `${start} ${body}`.replace(/\s+/g, " ")
 }
 
-function shapeToSvg(shape: RenderShape, accent: string): string {
-  const style = styleFor(shape.style, accent)
-
+function shapeToSvg(shape: RenderShape): string {
   if (shape.kind === "polygon") {
-    return `    <path id="${escapeXml(shape.id)}" d="${pathData(shape.points)}" ${attrs(style)} ${SHAPE_GEOMETRY} />`
+    const paint = paintFor(shape.token)
+    return `    <path id="${escapeXml(shape.id)}" d="${polyline(shape.points, true)}" ${paintAttrs(paint)} />`
   }
 
-  if (shape.kind === "marker") {
-    const [point] = shape.points
-    if (!point) return ""
-    const size = shape.size ?? 6
-    const half = size / 2
-    // 直角方块：中心对齐到点位，不设圆角。
-    return `    <rect id="${escapeXml(shape.id)}" x="${point[0] - half}" y="${point[1] - half}" width="${size}" height="${size}" ${attrs(style)} />`
+  if (shape.kind === "circle") {
+    const paint = paintFor(shape.token)
+    return `    <circle id="${escapeXml(shape.id)}" cx="${shape.at[0]}" cy="${shape.at[1]}" r="${shape.radius}" ${paintAttrs(paint)} />`
   }
 
-  const [point] = shape.points
-  if (!point) return ""
-  const anchor = shape.anchor ?? "middle"
-  const fontSize = style.fontSize ?? 16
-  const fontWeight = style.fontWeight ?? 400
-  const spacing = style.letterSpacing ?? 0
-  const halo = style.halo
-    ? ` stroke="${style.halo}" stroke-width="3.5" paint-order="stroke" stroke-linejoin="miter"`
-    : ""
-  const fill = style.fill ? `fill="${style.fill}"` : ""
+  if (shape.kind === "line") {
+    const paint = paintFor(shape.token)
+    const d = polyline(shape.points, false)
+    const dash = shape.dash ? ` stroke-dasharray="${shape.dash}"` : ""
+    const casing =
+      shape.casing && shape.casingWidth
+        ? `    <path d="${d}" fill="none" stroke="${shape.casing}" stroke-width="${shape.casingWidth}" stroke-linecap="round" />\n`
+        : ""
+    return `${casing}    <path id="${escapeXml(shape.id)}" d="${d}" ${paintAttrs(paint)} stroke-linecap="round"${dash} />`
+  }
 
-  return `    <text id="${escapeXml(shape.id)}" x="${point[0]}" y="${point[1]}" text-anchor="${anchor}" dominant-baseline="middle" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${spacing}" ${fill}${halo}>${escapeXml(shape.text ?? "")}</text>`
+  const { style } = shape
+  const lines = shape.text.split("\n")
+  const lineHeight = style.size * 1.15
+  const startY = shape.at[1] - ((lines.length - 1) * lineHeight) / 2
+  const tspans = lines
+    .map(
+      (line, index) =>
+        `<tspan x="${shape.at[0]}" y="${(startY + index * lineHeight).toFixed(2)}">${escapeXml(line)}</tspan>`,
+    )
+    .join("")
+
+  return `    <text id="${escapeXml(shape.id)}" text-anchor="middle" font-size="${style.size}" font-weight="${style.weight}" fill="${style.color}" stroke="${PALETTE.label.halo}" stroke-width="3" paint-order="stroke fill" stroke-linejoin="round">${tspans}</text>`
 }
 
 export function renderSvg(model: RenderModel): string {
   const groups = model.layers
     .filter((layer) => layer.shapes.length > 0)
     .map((layer) => {
-      const shapes = layer.shapes
-        .map((shape) => shapeToSvg(shape, model.accent))
-        .filter(Boolean)
-        .join("\n")
+      const shapes = layer.shapes.map(shapeToSvg).filter(Boolean).join("\n")
       return `  <g id="layer-${escapeXml(layer.id)}">\n${shapes}\n  </g>`
     })
     .join("\n")
 
   const description = [
     `${model.instance} · ${model.tier} 档`,
-    `特征 ${model.stats.features}，入口 ${model.stats.entrances}，标注 ${model.stats.labels}`,
+    `特征 ${model.stats.features}，门线 ${model.stats.doors}，标注 ${model.stats.labels}`,
     ...model.attribution,
   ]
     .map((line) => line.replace(/[。；]+$/u, ""))
     .join("；")
 
-  const background = styleFor("canvas", model.accent)
   const { x, y, width, height } = model.viewport
 
   return [
     `<?xml version="1.0" encoding="utf-8"?>`,
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${model.viewBox}" width="${width}" height="${height}" role="img" aria-labelledby="map-title map-desc" font-family="'Segoe UI','Microsoft YaHei','PingFang SC',sans-serif" shape-rendering="geometricPrecision" text-rendering="optimizeLegibility">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${model.viewBox}" width="${width}" height="${height}" role="img" aria-labelledby="map-title map-desc" font-family="'Microsoft YaHei','PingFang SC',sans-serif" shape-rendering="geometricPrecision" text-rendering="optimizeLegibility">`,
     `  <title id="map-title">${escapeXml(`${model.instance} · 校园地图`)}</title>`,
     `  <desc id="map-desc">${escapeXml(description)}</desc>`,
-    `  <rect id="canvas" x="${x}" y="${y}" width="${width}" height="${height}" ${attrs(background)} />`,
+    `  <rect id="canvas" x="${x}" y="${y}" width="${width}" height="${height}" fill="${PALETTE.canvas}" />`,
     groups,
     `</svg>`,
     ``,

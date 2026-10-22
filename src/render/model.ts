@@ -2,28 +2,37 @@
  * 渲染模型：平台中立的中间表示。
  *
  * 只描述「画什么、按什么语义着色」，不出现 SVG 专有概念。
- * SVG、Compose Canvas 等后端各自把它翻成自己的绘制指令。
- *
- * 样式约束见 docs/MAP_STYLE.md：中性分层、单一强调色、直角、无渐变无阴影。
+ * 样式取自既有实现，见 src/render/style.ts 与 docs/MAP_STYLE.md。
  */
 import { entrancePoint, entranceStatus } from "../entrance.ts"
 import { haversineMeters } from "../geo.ts"
 import type { CampusDataset } from "../compose.ts"
 import type { Feature, LngLat } from "../types.ts"
 import { createProjector } from "./project.ts"
-import { DEFAULT_ACCENT, markerSize, type StyleToken } from "./style.ts"
+import {
+  buildingKind,
+  buildingLabel,
+  gateLabel,
+  labelLines,
+  PALETTE,
+  pitchLabel,
+  type LabelStyle,
+  type StyleToken,
+} from "./style.ts"
 
-export interface RenderShape {
-  kind: "polygon" | "marker" | "label"
-  id: string
-  style: StyleToken
-  /** 多边形顶点；marker/label 只用第一项。 */
-  points: LngLat[]
-  /** 方块标记的边长（画布单位）。 */
-  size?: number
-  text?: string
-  anchor?: "middle" | "start" | "end"
-}
+export type RenderShape =
+  | { kind: "polygon"; id: string; token: StyleToken; points: LngLat[] }
+  | { kind: "circle"; id: string; token: StyleToken; at: LngLat; radius: number }
+  | {
+      kind: "line"
+      id: string
+      token: StyleToken
+      points: LngLat[]
+      dash?: string
+      casing?: string
+      casingWidth?: number
+    }
+  | { kind: "label"; id: string; at: LngLat; text: string; style: LabelStyle }
 
 export interface RenderLayer {
   id: string
@@ -33,55 +42,34 @@ export interface RenderLayer {
 export interface RenderTier {
   id: "overview" | "z17" | "close"
   title: string
-  /** 小于该面积的建筑不标注（画布单位面积）。 */
-  labelMinArea: number
-  /** 是否绘制入口，以及绘制到哪一档可信度。 */
-  entrances: "none" | "verified" | "all"
-  showConnectors: boolean
+  /** 总览档用大字，并省略宿舍与「其他」楼的标注。 */
+  overview: boolean
+  /** 是否绘制已核对的入口门线。 */
+  doors: boolean
 }
 
 export const TIERS: Record<RenderTier["id"], RenderTier> = {
-  overview: {
-    id: "overview",
-    title: "总览",
-    labelMinArea: 7000,
-    entrances: "none",
-    showConnectors: false,
-  },
-  z17: {
-    id: "z17",
-    title: "标准",
-    labelMinArea: 1800,
-    entrances: "verified",
-    showConnectors: true,
-  },
-  close: {
-    id: "close",
-    title: "近景",
-    labelMinArea: 0,
-    entrances: "all",
-    showConnectors: true,
-  },
+  overview: { id: "overview", title: "总览", overview: true, doors: false },
+  z17: { id: "z17", title: "标准", overview: false, doors: true },
+  close: { id: "close", title: "近景", overview: false, doors: true },
 }
 
 export interface RenderOptions {
-  /** 单一强调色。换它即换掉全部强调表现。 */
+  /** 保留接口：本设计的强调色来自楼型分色，不接收外部 accent。 */
   accent?: string
 }
 
 export interface RenderModel {
   instance: string
   tier: RenderTier["id"]
-  accent: string
   viewport: { x: number; y: number; width: number; height: number }
   viewBox: string
   layers: RenderLayer[]
   attribution: string[]
   stats: {
     features: number
-    entrances: number
+    doors: number
     labels: number
-    /** 地理范围对角线长度（米），用于核对配准是否合理。 */
     spanMeters: number
   }
 }
@@ -101,23 +89,9 @@ function centroid(points: LngLat[]): LngLat {
   return [sum[0] / body.length, sum[1] / body.length]
 }
 
-/** 鞋带公式，返回绝对面积。 */
-function polygonArea(points: LngLat[]): number {
-  let total = 0
-  for (let i = 0; i < points.length; i += 1) {
-    const a = points[i]!
-    const b = points[(i + 1) % points.length]!
-    total += a[0] * b[1] - b[0] * a[1]
-  }
-  return Math.abs(total) / 2
-}
-
-/**
- * 视口贴合内容（贴边）：以校园多边形为界，外扩固定留白。
- * 配准不动，只改取景——所有几何仍在同一套画布坐标里。
- */
-function cropToContent(land: RenderShape[], margin = 44) {
-  const points = land.flatMap((shape) => shape.points)
+/** 视口贴合校园外框加留白，不输出登记画布里的空白带。 */
+function cropToContent(campus: RenderShape[], margin = 44) {
+  const points = campus.flatMap((shape) => (shape.kind === "polygon" ? shape.points : []))
   if (points.length === 0) return { x: 0, y: 0, width: 1129.2, height: 1723.7 }
 
   let minX = Infinity
@@ -132,40 +106,29 @@ function cropToContent(land: RenderShape[], margin = 44) {
   }
 
   return {
-    x: Math.round((minX - margin) * 100) / 100,
-    y: Math.round((minY - margin) * 100) / 100,
-    width: Math.round((maxX - minX + margin * 2) * 100) / 100,
-    height: Math.round((maxY - minY + margin * 2) * 100) / 100,
+    x: round(minX - margin),
+    y: round(minY - margin),
+    width: round(maxX - minX + margin * 2),
+    height: round(maxY - minY + margin * 2),
   }
 }
 
 export function buildRenderModel(
   dataset: CampusDataset,
   tier: RenderTier = TIERS.z17,
-  options: RenderOptions = {},
 ): RenderModel {
-  const accent = options.accent ?? DEFAULT_ACCENT
   const projector = createProjector(dataset.registration)
   const toCanvas = (point: LngLat): LngLat => projector.toCanvas(point).map(round) as LngLat
 
-  const land: RenderShape[] = []
-  const open: RenderShape[] = []
+  const campus: RenderShape[] = []
+  const pitches: RenderShape[] = []
   const buildings: RenderShape[] = []
   const links: RenderShape[] = []
   const gates: RenderShape[] = []
-  const entrances: RenderShape[] = []
+  const doors: RenderShape[] = []
   const labels: RenderShape[] = []
 
-  let entranceCount = 0
-
-  const pushMarker = (
-    target: RenderShape[],
-    id: string,
-    style: StyleToken,
-    at: LngLat,
-  ) => {
-    target.push({ kind: "marker", id, style, points: [at], size: markerSize(style) })
-  }
+  let doorCount = 0
 
   for (const feature of dataset.features) {
     const { name, kind, label_latlng } = feature.properties
@@ -175,63 +138,90 @@ export function buildRenderModel(
       label_latlng ? [label_latlng.lng, label_latlng.lat] : centroid(ring),
     )
 
-    if (kind === "campus" || kind === "pitch" || kind === "building") {
-      const target = kind === "campus" ? land : kind === "pitch" ? open : buildings
-      if (canvasRing.length > 0) {
-        target.push({ kind: "polygon", id: name, style: kind === "campus" ? "land" : kind === "pitch" ? "open" : "building", points: canvasRing })
-      }
-      const area = polygonArea(canvasRing)
-      const alwaysLabelled = kind === "campus"
-      if (alwaysLabelled || area >= tier.labelMinArea) {
+    if (kind === "campus" && canvasRing.length > 0) {
+      campus.push({ kind: "polygon", id: name, token: "campus", points: canvasRing })
+    }
+
+    if (kind === "pitch" && canvasRing.length > 0) {
+      const athletic = ["athletics", "track_field"].includes(feature.properties.sport ?? "")
+      pitches.push({
+        kind: "polygon",
+        id: name,
+        token: athletic ? "pitch:track" : "pitch:field",
+        points: canvasRing,
+      })
+      if (!tier.overview || name.includes("田径")) {
+        const lines = tier.overview
+          ? [name.split("-")[0] ?? name]
+          : name.includes("老操场")
+            ? [name.split("-").at(-1) ?? name]
+            : name.split("-")
         labels.push({
           kind: "label",
-          id: name,
-          style: alwaysLabelled ? "label-primary" : "label-secondary",
-          points: [labelAt],
-          text: name,
-          anchor: "middle",
+          id: `${name}-label`,
+          at: labelAt,
+          text: lines.join("\n"),
+          style: pitchLabel(tier.overview),
         })
       }
     }
 
-    if (kind === "building-connector" && tier.showConnectors) {
-      if (canvasRing.length > 0) {
-        links.push({ kind: "polygon", id: name, style: "link", points: canvasRing })
+    if (kind === "building" && canvasRing.length > 0) {
+      const kindOfBuilding = buildingKind(name)
+      buildings.push({
+        kind: "polygon",
+        id: name,
+        token: `building:${kindOfBuilding}`,
+        points: canvasRing,
+      })
+
+      const omittedInOverview = kindOfBuilding === "residence" || kindOfBuilding === "other"
+      if (!(tier.overview && omittedInOverview)) {
+        labels.push({
+          kind: "label",
+          id: `${name}-label`,
+          at: labelAt,
+          text: labelLines(name).join("\n"),
+          style: buildingLabel(name, tier.overview),
+        })
       }
+    }
+
+    if (kind === "building-connector" && canvasRing.length > 0) {
+      links.push({ kind: "polygon", id: name, token: "building:residence", points: canvasRing })
     }
 
     if (kind === "gate") {
       const at =
         feature.geometry.type === "Point" ? toCanvas(feature.geometry.coordinates) : labelAt
-      pushMarker(gates, name, "gate", at)
+      gates.push({ kind: "circle", id: name, token: "gate", at, radius: PALETTE.gate.radius })
       labels.push({
         kind: "label",
         id: `${name}-label`,
-        style: "label-secondary",
-        points: [at],
+        at: [at[0], at[1] + 20],
         text: name,
-        anchor: "middle",
+        style: gateLabel(tier.overview),
       })
     }
 
-    for (const entrance of feature.properties.entrances ?? []) {
-      const status = entranceStatus(entrance)
-      if (status === "unknown") continue
-      if (tier.entrances === "none") continue
-      if (tier.entrances === "verified" && status !== "verified") continue
-      const point = entrancePoint(entrance)
-      if (!point) continue
-      pushMarker(
-        entrances,
-        `${name}-${status}-${entranceCount}`,
-        status === "verified"
-          ? "entrance-verified"
-          : status === "approximate"
-            ? "entrance-approximate"
-            : "entrance-candidate",
-        toCanvas(point),
-      )
-      entranceCount += 1
+    if (tier.doors) {
+      for (const [index, entrance] of (feature.properties.entrances ?? []).entries()) {
+        // 与既有实现一致：只绘制人工核对且为主的入口，其余由宿主叠加。
+        if (!entrance.manual || !entrance.is_main) continue
+        const point = entrancePoint(entrance)
+        if (!point) continue
+        const approximate = entranceStatus(entrance) === "approximate"
+        doors.push({
+          kind: "line",
+          id: `${name}-door-${index}`,
+          token: approximate ? "door-approximate" : "door",
+          points: entrance.line.map(toCanvas),
+          ...(approximate ? { dash: PALETTE.door.dash } : {}),
+          casing: PALETTE.door.casing,
+          casingWidth: PALETTE.door.casingWidth,
+        })
+        doorCount += 1
+      }
     }
   }
 
@@ -241,21 +231,20 @@ export function buildRenderModel(
     { lat: northEast.lat, lng: northEast.lng },
   )
 
-  const viewport = cropToContent(land)
+  const viewport = cropToContent(campus)
 
   return {
     instance: dataset.registration.campus,
     tier: tier.id,
-    accent,
     viewport,
     viewBox: `${viewport.x} ${viewport.y} ${viewport.width} ${viewport.height}`,
     layers: [
-      { id: "land", shapes: land },
-      { id: "open", shapes: open },
+      { id: "campus", shapes: campus },
+      { id: "pitches", shapes: pitches },
       { id: "buildings", shapes: buildings },
       { id: "links", shapes: links },
       { id: "gates", shapes: gates },
-      { id: "entrances", shapes: entrances },
+      { id: "doors", shapes: doors },
       { id: "labels", shapes: labels },
     ],
     attribution: [
@@ -264,7 +253,7 @@ export function buildRenderModel(
     ],
     stats: {
       features: dataset.features.length,
-      entrances: entranceCount,
+      doors: doorCount,
       labels: labels.length,
       spanMeters: Math.round(spanMeters),
     },

@@ -89,7 +89,7 @@ async function main() {
   const rendered: { tier: RenderTier["id"]; svg: string }[] = []
 
   for (const tierId of args.tiers) {
-    const model = buildRenderModel(dataset, TIERS[tierId], { accent: loaded.instance.accent })
+    const model = buildRenderModel(dataset, TIERS[tierId])
     const svg = renderSvg(model)
 
     await writeFile(join(outDir, `model-${tierId}.json`), `${JSON.stringify(model, null, 2)}\n`, "utf8")
@@ -118,7 +118,7 @@ async function main() {
     await writeFile(join(outDir, "preview.html"), previewHtml(args.instance, rendered, warnings.length), "utf8")
   }
 
-  const totalEntrances = rendered.length > 0 ? buildRenderModel(dataset, TIERS.close).stats.entrances : 0
+  const totalEntrances = rendered.length > 0 ? buildRenderModel(dataset, TIERS.close).stats.doors : 0
   console.log(JSON.stringify({
     instance: args.instance,
     output: outDir,
