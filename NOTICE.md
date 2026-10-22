@@ -11,6 +11,8 @@
 
 两者不可互换，也不可覆盖彼此。复制、分发或修改时按所在目录适用对应条款。
 
+`test/fixtures/` 存放迁移对拍快照，内容与 `data/base`、`data/survey` 同源；其中 ODbL 派生部分仍受 ODbL 约束，不因放在测试目录而改变。
+
 ## 来源数据
 
 `data/base/` 与生成产物中的校外背景层包含来自 **OpenStreetMap** 的数据：

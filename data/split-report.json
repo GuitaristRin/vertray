@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "source": {
+    "path": "C:\\Users\\mc158\\Documents\\Projects\\qlu-campus\\portal-web\\src\\data\\campus-map.ts",
+    "sha256": "d15eef0f1d048aa0890dbee131867155f2918d9038cb834eb7148e3caa405e8a"
+  },
+  "counts": {
+    "features": 59,
+    "baseFeatures": 57,
+    "connectors": 2,
+    "baseEntrances": 184,
+    "surveyEntrances": 16,
+    "residence": 27
+  }
+}
