@@ -31,6 +31,33 @@ const warning = (code: string, message: string, at?: string): Issue => ({
 export function validateData(base: BaseData, survey: SurveyData): ValidationResult {
   const issues: Issue[] = []
 
+  const bounds = base.registration.overlayBounds
+  const outside = (lng: number, lat: number) =>
+    lng < bounds.southWest.lng - 0.02 ||
+    lng > bounds.northEast.lng + 0.02 ||
+    lat < bounds.southWest.lat - 0.02 ||
+    lat > bounds.northEast.lat + 0.02
+
+  const checkPoint = (name: string, lng: number, lat: number) => {
+    if (outside(lng, lat)) {
+      issues.push(
+        error(
+          "coordinate-out-of-bounds",
+          `坐标落在实例范围外，可能是经纬顺序写反：${name} (${lng}, ${lat})`,
+          name,
+        ),
+      )
+    }
+  }
+
+  const checkGeometry = (name: string, geometry: BaseData["campus"]["features"][number]["geometry"]) => {
+    if (geometry.type === "Polygon") {
+      for (const point of geometry.coordinates[0] ?? []) checkPoint(name, point[0], point[1])
+    } else {
+      checkPoint(name, geometry.coordinates[0], geometry.coordinates[1])
+    }
+  }
+
   const names = new Set<string>()
   for (const feature of base.campus.features) {
     const { name, kind } = feature.properties
@@ -64,6 +91,14 @@ export function validateData(base: BaseData, survey: SurveyData): ValidationResu
         warning("connector-serves-missing", `连接体未写明所服务的楼栋：${name}`, name),
       )
     }
+    checkGeometry(name, feature.geometry)
+  }
+
+  for (const feature of base.campus.features) {
+    const name = feature.properties.name
+    const label = feature.properties.label_latlng
+    if (label) checkPoint(`${name} 标注点`, label.lng, label.lat)
+    checkGeometry(name, feature.geometry)
   }
 
   for (const [name, entrances] of Object.entries(survey.entrances.records)) {
@@ -72,6 +107,7 @@ export function validateData(base: BaseData, survey: SurveyData): ValidationResu
     }
     for (const [index, entrance] of entrances.entries()) {
       const at = `${name}#${index}`
+      for (const point of entrance.line) checkPoint(at, point[0], point[1])
       if (!entrancePoint(entrance)) {
         issues.push(error("entrance-line-short", `入口线段不足两点：${at}`, at))
       }

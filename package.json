@@ -12,6 +12,7 @@
     "src"
   ],
   "scripts": {
+    "build:instance": "node tools/build/cli.ts --preview",
     "test": "node --test",
     "typecheck": "tsc --noEmit"
   },

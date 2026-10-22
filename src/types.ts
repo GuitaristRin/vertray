@@ -58,7 +58,8 @@ export interface FeatureProperties {
   class?: string
   sport?: string
   roads?: string[]
-  label_latlng?: LngLat
+  /** 标注点。命名键而非数组：迁移源曾把 [纬度, 经度] 写成数组，与 GeoJSON 顺序相反。 */
+  label_latlng?: LatLng
   serves_buildings?: string[]
   manual?: boolean
   position_accuracy?: "approximate"
