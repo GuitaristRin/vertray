@@ -147,8 +147,27 @@ export const MARGINAL = {
   credit: "#8e9b91",
 } as const
 
+/** 校外背景的配色，取自既有 surroundings.py，不属于校园主体。 */
+export const SURROUNDINGS_COLORS = {
+  frame: "#eff2ec",
+  land: ["#e9eae4", "none"],
+  education: ["#e8ede5", "#d8e0d5"],
+  green: ["#e3e9dc", "none"],
+  paved: ["#eeefea", "#dce1d9"],
+  water: ["#cbdfe2", "#b5ccd0"],
+  building: ["#dce2da", "#c2ccc0"],
+  casing: "#d3dbd0",
+  road: "#fbfcf9",
+  path: "#fafbf7",
+  waterway: "#c5dadd",
+} as const
+
 /** 产物里允许出现的全部颜色。新增颜色必须先进这里，再进样式表。 */
 export function paletteColors(): string[] {
+  const surroundings = Object.values(SURROUNDINGS_COLORS).flatMap((value) =>
+    typeof value === "string" ? [value] : value.filter((part) => part.startsWith("#")),
+  )
+
   return [
     PALETTE.canvas,
     PALETTE.campus.fill,
@@ -170,6 +189,7 @@ export function paletteColors(): string[] {
     PALETTE.label.pitch,
     PALETTE.label.road,
     ...Object.values(MARGINAL),
+    ...surroundings,
     ...Object.values(BUILDING_COLORS).flatMap((color) => [color.fill, color.stroke]),
     ...Object.values(PALETTE.label.building),
   ]

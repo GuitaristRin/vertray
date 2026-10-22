@@ -88,6 +88,31 @@ function basePathToSvg(path: BasePath, index: number): string {
   return `      <path id="base-${index}" d="${path.d}" fill="${fill}"${stroke}${width} />`
 }
 
+/** 校外背景：整幅先铺底色，再按 evenodd 挖掉校园，只留校外。 */
+function renderSurroundings(model: RenderModel): string {
+  if (!model.surroundings) return ""
+  const { transform, clip, groups } = model.surroundings
+
+  const body = groups
+    .filter((group) => group.paths.length > 0)
+    .map((group) => {
+      const paths = group.paths.map(basePathToSvg).join("\n")
+      return `    <g id="surroundings-${escapeXml(group.id)}">\n${paths}\n    </g>`
+    })
+    .join("\n")
+
+  return [
+    `  <defs>`,
+    `    <clipPath id="surroundings-clip" clipPathUnits="userSpaceOnUse">`,
+    `      <path d="${clip.frame} ${clip.campusPathD}" clip-rule="${clip.rule}" fill-rule="${clip.rule}" />`,
+    `    </clipPath>`,
+    `  </defs>`,
+    `  <g id="surroundings" transform="${transform}" clip-path="url(#surroundings-clip)" stroke-linejoin="round" stroke-linecap="round">`,
+    body,
+    `  </g>`,
+  ].join("\n")
+}
+
 function renderBase(model: RenderModel): string {
   if (!model.base) return ""
   const groups = model.base.groups
@@ -151,6 +176,7 @@ export function renderSvg(model: RenderModel): string {
     `  <title id="map-title">${escapeXml(`${model.instance} · 校园地图`)}</title>`,
     `  <desc id="map-desc">${escapeXml(description)}</desc>`,
     `  <rect id="canvas" x="${x}" y="${y}" width="${width}" height="${height}" fill="${PALETTE.canvas}" />`,
+    renderSurroundings(model),
     renderBase(model),
     groups,
     renderMarginal(model),

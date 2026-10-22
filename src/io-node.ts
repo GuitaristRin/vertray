@@ -21,6 +21,7 @@ import type {
   ProvenanceFile,
   Registration,
   Structure,
+  SurroundingsGeometry,
   SurveyData,
 } from "./types.ts"
 
@@ -97,6 +98,9 @@ export async function loadInstance(root: string, instanceId: string): Promise<Lo
   const surveyDir = layerDir("survey")
 
   const geometry = await readJsonIfExists<BaseGeometry>(join(osmDir, "base-geometry.json"))
+  const surroundings = await readJsonIfExists<SurroundingsGeometry>(
+    join(osmDir, "surroundings-geometry.json"),
+  )
 
   return {
     root: base,
@@ -107,6 +111,7 @@ export async function loadInstance(root: string, instanceId: string): Promise<Lo
       registration,
       campus: await readJson<FeatureCollection>(join(osmDir, "campus.geojson")),
       ...(geometry ? { geometry } : {}),
+      ...(surroundings ? { surroundings } : {}),
     },
     survey: {
       entrances: await readJson<ProvenanceFile<Entrance[]>>(

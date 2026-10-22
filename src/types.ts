@@ -136,6 +136,19 @@ export interface BasePath {
   buildingKind?: string
 }
 
+/** 校外周边：低细节背景，在校园轮廓外侧绘制。 */
+export interface SurroundingsGeometry {
+  schema: number
+  source: string
+  attribution?: string
+  license?: string
+  sourceTimestamp?: string
+  transform: string
+  /** evenodd 裁切：整幅减去校园轮廓。 */
+  clip: { frame: string; campusPathD: string; rule: string }
+  groups: { id: string; paths: BasePath[] }[]
+}
+
 /** 从既有底图抽出的基础几何，按既有层序分组。 */
 export interface BaseGeometry {
   schema: number
@@ -202,6 +215,8 @@ export interface BaseData {
   campus: FeatureCollection
   /** 既有底图的路网、用地、水系、围墙与建筑轮廓。 */
   geometry?: BaseGeometry
+  /** 校外低细节背景。 */
+  surroundings?: SurroundingsGeometry
 }
 
 /** survey 层：本仓条款。 */

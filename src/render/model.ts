@@ -81,6 +81,12 @@ export interface RenderModel {
   unitsPerMeter: number
   /** 既有底图的基础几何，按既有层序先于数据层绘制。 */
   base?: { transform: string; groups: { id: string; paths: BasePath[] }[] }
+  /** 校外背景：在校园轮廓外侧绘制，先于底图。 */
+  surroundings?: {
+    transform: string
+    clip: { frame: string; campusPathD: string; rule: string }
+    groups: { id: string; paths: BasePath[] }[]
+  }
   layers: RenderLayer[]
   attribution: string[]
   stats: {
@@ -369,6 +375,18 @@ export function buildRenderModel(
           base: {
             transform: dataset.geometry.transform,
             groups: dataset.geometry.groups.map((group) => ({
+              id: group.id,
+              paths: group.paths,
+            })),
+          },
+        }
+      : {}),
+    ...(dataset.surroundings
+      ? {
+          surroundings: {
+            transform: dataset.surroundings.transform,
+            clip: dataset.surroundings.clip,
+            groups: dataset.surroundings.groups.map((group) => ({
               id: group.id,
               paths: group.paths,
             })),
